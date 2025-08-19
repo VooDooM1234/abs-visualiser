@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 // FetchData is a generic API client for any service
@@ -22,13 +23,29 @@ func NewFetchData(scheme, host string, port int) *FetchData {
 	}
 }
 
-// HTTP GET from endpoint returns byte array of data for unmarshaling
-func (f *FetchData) Get(endpoint, apiKey, qParam string) ([]byte, error) {
-	url := fmt.Sprintf("%s://%s%s?key=%s&q=%s", f.Scheme, f.Host, endpoint, apiKey, qParam)
-	safeURL := fmt.Sprintf("%s://%s%s?q=%s", f.Scheme, f.Host, endpoint, qParam)
-	fmt.Println("Fetching:", safeURL)
+type Path struct {
+	Endpoint string
+	Params   map[string]string
+	Headers  map[string]string
+}
 
-	resp, err := http.Get(url)
+// HTTP GET from endpoint returns byte array of data for unmarshaling
+func (f *FetchData) Get(path Path) ([]byte, error) {
+	url := url.URL{
+		Scheme: f.Scheme,
+		Host:   f.Host,
+		Path:   path.Endpoint,
+	}
+
+	q := url.Query()
+	for k, v := range path.Params {
+		q.Set(k, v)
+	}
+	url.RawQuery = q.Encode()
+
+	fmt.Println("Fetching:", url.String())
+
+	resp, err := http.Get(url.String())
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request error: %w", err)
 	}

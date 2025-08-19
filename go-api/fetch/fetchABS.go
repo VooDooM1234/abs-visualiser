@@ -1,6 +1,8 @@
 package fetch
 
 import (
+	"fmt"
+
 	"github.com/gocarina/gocsv"
 )
 
@@ -25,12 +27,23 @@ type restDataCSVResponseRaw struct {
 	Observation    string `csv:"Observation Value"`
 }
 
-// Get data from /rest/data endpoint expecting CSV response
-func (f *FetchData) ABSRestDataCSV(apiKey, qParam string) ([]*restDataCSVResponseRaw, error) {
-	// var data *restDataCSVResponseRaw
+// Get data from /rest/data endpoint expecting CSV response, ABS get data from /rest/data/ but then has extra information for its dataflowidenitifer and datakey
+func (f *FetchData) ABSRestDataCSV(apiKey, dataflowIdentifier, dataKey, qParam string) ([]*restDataCSVResponseRaw, error) {
+	endPoint := fmt.Sprintf("/rest/data/%s/%s", dataflowIdentifier, dataKey)
+	path := Path{
+		Endpoint: endPoint,
+		Params: map[string]string{
+			// "q":      qParam,
+			// "key":    apiKey,
+			// "startPeriod": "",
+			// "endPeriod":   "",
+			"format": "csvfilewithlabels",
+			"detail": "dataonly",
+		},
+	}
+
 	dataArr := []*restDataCSVResponseRaw{}
-	//body is returning empty - fix here when no 12am on a monday xdd
-	body, err := f.Get("/rest/data", apiKey, qParam)
+	body, err := f.Get(path)
 
 	if err := gocsv.UnmarshalBytes(body, &dataArr); err != nil {
 		panic(err)
