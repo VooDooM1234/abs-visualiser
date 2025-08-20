@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 
@@ -13,13 +14,19 @@ type apiKeys struct {
 }
 
 type Config struct {
-	postgresURL string
+	postgresURL       string
+	PythonPath        string `json:"python_path"`
+	DefaultChart      string `json:"default_chart"`
+	DataSource        string `json:"data_source"`
+	PlotServicePort   string `json:"plot_service_port"`
+	PlotServiceScript string `json:"plot_service_script"`
+	Host              string `json:"host"`
 }
 
 var keys apiKeys
 var config Config
 
-func Init() {
+func Init() (*Config, error) {
 	_ = godotenv.Load("../.env")
 
 	config.postgresURL = os.Getenv("DATABASE_URL")
@@ -36,6 +43,16 @@ func Init() {
 	if config.postgresURL == "" {
 		log.Fatal("DATABASE_URL not set")
 	}
+
+	file, err := os.Open("../config.json")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var cfg Config
+	err = json.NewDecoder(file).Decode(&cfg)
+	return &cfg, err
 
 }
 

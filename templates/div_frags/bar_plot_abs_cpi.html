@@ -1,0 +1,16 @@
+<div id="plotly-chart"></div>
+<script>
+  const data = [{
+    x: {{ .X }},
+    y: {{ .Y }},
+    type: "{{ .Type }}"
+  }];
+
+  const layout = {
+    title: 'Consumer Price Index - Quarterly',
+    xaxis: { title: 'Time Period' },
+    yaxis: { title: 'CPI' }
+  };
+
+  Plotly.newPlot('plotly-chart', data, layout);
+</script>

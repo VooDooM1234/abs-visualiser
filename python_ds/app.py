@@ -8,6 +8,7 @@ import os
 import csv
 
 from dotenv import load_dotenv
+import plotly.io as pio
 
 load_dotenv('../.env')
 
@@ -34,17 +35,41 @@ with psycopg.connect(dbname=DATABASE_name,user=DATABASE_user,password=DATABASE_p
 
         cur.execute("SELECT * FROM ABS_CPI")
 
-        for record in cur:
-            print(record)
-
     query = "SELECT * FROM ABS_CPI"
     df = pd.read_sql(query, conn)
-    print(df.head())
 
-# fig = px.bar(x=["a", "b", "c"], y=[1, 3, 2])
-# fig.show()
+    df['value'] = pd.to_numeric(df['value'], errors='coerce')
+    df['value'] = df['value'].round(2)
+    df['value'] = df['value'].astype(float)  # Ensure float type
 
-# plt.plot([1,2,3], [4,5,6])
-# plt.show()
+fig = px.bar(
+    df,
+    x="time_period",
+    y="value",
+    title="Consumer Price Index - Quarterly",
+    labels={'time_period': 'Time Period', 'value': 'CPI'}
+)
 
-# print("Hello world")
+fig.update_yaxes(tickformat=".2f")
+fig.update_traces(hovertemplate='Time Period=%{x}<br>CPI=%{y:.2f}<extra></extra>')
+
+fig.show()
+
+for trace in fig.data:
+    trace.hovertemplate = 'Time Period=%{x}<br>CPI=%{y:.2f}<extra></extra>'
+    trace.texttemplate = '%{y:.2f}'  # If you want bar labels to show decimals
+
+fig.update_yaxes(tickformat=".2f")
+
+pio.write_html(
+    fig,
+    file="../templates/div_frags/bar_plot_abs_cpi.html",
+    full_html=False,
+    include_plotlyjs=False
+)
+
+fig_json = fig.to_json()
+print(fig_json)
+
+
+
