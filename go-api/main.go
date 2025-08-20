@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 
 	"github.com/VooDooM1234/abs-visualiser/config"
@@ -13,23 +13,25 @@ import (
 	"github.com/VooDooM1234/abs-visualiser/handlers"
 )
 
-func homePageHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	tmpl := template.Must(template.ParseFiles("../templates/index.html"))
+func launchPythonMicroservice(config *config.Config) {
+	cmd := exec.Command(
+		config.PythonPath,
+		"-m", "uvicorn",
+		"python_ds.main:app",
+		"--host", config.Host,
+		"--port", config.PlotServicePort,
+		"--app-dir", "..",
+	)
 
-	if err := tmpl.Execute(w, nil); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	log.Print("Home Page")
-}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
-func startPythonMicroservice(config *config.Config) {
-	cmd := exec.Command(config.PythonPath, "-m", "uvicorn", config.PlotServiceScript, "--host", config.Host, "--port", config.PlotServicePort)
 	err := cmd.Start()
 	if err != nil {
-		log.Fatalf("Failed to start Python microservice: %v", err)
+		log.Fatalf("Failed to launch Python microservice: %v", err)
 	}
-	log.Printf("Python microservice started on %s:%s\n", config.Host, config.PlotServicePort)
+
+	log.Printf("Python microservice running at http://%s:%s\n", config.Host, config.PlotServicePort)
 }
 
 func main() {
@@ -70,14 +72,13 @@ func main() {
 
 	// }
 
-	http.HandleFunc("/", homePageHandler)
-	// http.Handle("/plot/bar-abs-cpi", handlers.NewPlotABSCPIHandler(logger))
-	http.Handle("/plot/bar-abs-cpi/", handlers.NewPlotABSCPIHandler())
-	http.Handle("/plot/test/", handlers.PlotTestHandler(logger))
-	http.Handle("/plot/test/json/", handlers.PlotTestJSONHandler(logger))
+	http.Handle("/", handlers.HomePageHandler(config, logger))
+	http.Handle("/plot/bar-abs-cpi/", handlers.PlotABSCPIHandler(config, logger))
+	http.Handle("/plot/test/", handlers.PlotTestHandler(config, logger))
+	http.Handle("/plot/test/json/", handlers.PlotTestJSONHandler(config, logger))
 
 	log.Println("Starting server on 0.0.0.0:8080")
-	startPythonMicroservice(config)
+	launchPythonMicroservice(config)
 	log.Fatal(http.ListenAndServe("0.0.0.0:8080", nil))
 
 }

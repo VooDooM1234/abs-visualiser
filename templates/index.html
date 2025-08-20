@@ -11,7 +11,10 @@
     />
 
     <!-- Plotly JS (global) -->
-    <script src="https://cdn.plot.ly/plotly-3.1.0.min.js" charset="utf-8"></script>
+    <script
+      src="https://cdn.plot.ly/plotly-3.1.0.min.js"
+      charset="utf-8"
+    ></script>
 
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@2.0.6/dist/htmx.min.js"></script>
@@ -27,7 +30,6 @@
   <body class="container my-4">
     <h1 class="text-center mb-4">HELLO WORLD</h1>
 
-    <!-- HTMX will swap in the plot container here -->
     <div
       id="plot-test"
       hx-get="/plot/test/"
@@ -35,22 +37,11 @@
       hx-swap="outerHTML"
     ></div>
 
-    <script>
-  document.body.addEventListener('htmx:afterSwap', function(evt) {
-    if (evt.detail.target.id === "plot-test") {
-      fetch("/plot/test/json/")
-        .then(r => r.json())
-        .then(fig => {
-          // Wait for the DOM to update
-          setTimeout(function() {
-            const plotDiv = document.getElementById("plot-test");
-            if (plotDiv) {
-              Plotly.newPlot("plot-test", fig.data, fig.layout);
-            }
-          }, 0);
-        });
-    }
-  });
-</script>
+    <div
+      id="plot-bar-abs-cpi"
+      hx-get="/plot/bar-abs-cpi/"
+      hx-trigger="load"
+      hx-swap="outerHTML"
+    ></div>
   </body>
 </html>

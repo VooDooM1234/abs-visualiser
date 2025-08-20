@@ -7,10 +7,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/VooDooM1234/abs-visualiser/config"
 )
 
 // https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/#maker-funcs-return-the-handler
-// func handleSomething(logger *Logger) http.Handler {
+// func handleSomething(config *config.Config, logger *Logger) http.Handler {
 //     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 //         // handler logic
 //     })
@@ -33,70 +35,23 @@ func encode[T any](w http.ResponseWriter, status int, v T) error {
 	return nil
 }
 
-// func NewPlotABSCPIHandler(logger *log.Logger) http.Handler {
-// 	tmpl := template.Must(template.ParseFiles("../templates/div_frags/bar_plot_abs_cpi.html"))
-
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		w.Header().Set("Content-Type", "text/html")
-
-// 		// You could also pass dynamic data to the template here
-// 		if err := tmpl.Execute(w, nil); err != nil {
-// 			http.Error(w, err.Error(), http.StatusInternalServerError)
-// 			logger.Println("Error rendering template:", err)
-// 			return
-// 		}
-
-// 		logger.Println("Served ABS CPI plot page")
-// 	})
-// }
-
-type PlotlyChart struct {
-	X    []string  `json:"x"`
-	Y    []float64 `json:"y"`
-	Type string    `json:"type"`
-}
-
-type PlotlyTemplateData struct {
-	X    template.JS
-	Y    template.JS
-	Type string
-}
-
-func NewPlotABSCPIHandler() http.Handler {
-	tmpl := template.Must(template.ParseFiles("../templates/div_frags/bar_plot_abs_cpi.html"))
-
+func HomePageHandler(config *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
+		tmpl := template.Must(template.ParseFiles("../templates/index.html"))
 
-		// Example data, replace with your actual data source
-		x := []string{"2024-Q1", "2024-Q2", "2024-Q3"}
-		y := []float64{123.45, 124.56, 125.67}
-		xJSON, _ := json.Marshal(x)
-		yJSON, _ := json.Marshal(y)
-
-		data := PlotlyTemplateData{
-			X:    template.JS(xJSON),
-			Y:    template.JS(yJSON),
-			Type: "bar",
-		}
-
-		if err := tmpl.Execute(w, data); err != nil {
+		if err := tmpl.Execute(w, nil); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			// logger.Println("Error rendering template:", err)
-			return
 		}
-
-		// logger.Println("Served ABS CPI plot page")
+		log.Print("Home Page")
 	})
 }
 
-func PlotTestHandler(logger *log.Logger) http.Handler {
-	// tmpl := template.Must(template.ParseFiles("../templates/div_frags/bar_plot_abs_cpi.html"))
-
+func PlotABSCPIHandler(config *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-
-		resp, err := http.Get("http://localhost:8081/plot/test")
+		url := fmt.Sprintf("http://%s:%s/plot/bar-abs-cpi", config.Host, config.PlotServicePort)
+		resp, err := http.Get(url)
 
 		if err != nil {
 			http.Error(w, "Python service unavailable", http.StatusBadGateway)
@@ -107,22 +62,43 @@ func PlotTestHandler(logger *log.Logger) http.Handler {
 		htmlBytes, _ := io.ReadAll(resp.Body)
 		htmlString := string(htmlBytes)
 		fmt.Fprint(w, htmlString)
-
-		// logger.Println("Served ABS CPI plot page")
 	})
 }
 
-func PlotTestJSONHandler(logger *log.Logger) http.Handler {
+func PlotTestHandler(config *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "text/html")
+		url := fmt.Sprintf("http://%s:%s/plot/test", config.Host, config.PlotServicePort)
+		resp, err := http.Get(url)
 
-		resp, err := http.Get("http://localhost:8081/plot/test/json")
 		if err != nil {
 			http.Error(w, "Python service unavailable", http.StatusBadGateway)
 			return
 		}
+
+		defer resp.Body.Close()
+		htmlBytes, _ := io.ReadAll(resp.Body)
+		htmlString := string(htmlBytes)
+		fmt.Fprint(w, htmlString)
+	})
+}
+
+func PlotTestJSONHandler(config *config.Config, logger *log.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		url := fmt.Sprintf("http://%s:%s/plot/test/json", config.Host, config.PlotServicePort)
+		resp, err := http.Get(url)
+		if err != nil {
+			http.Error(w, "Python service unavailable", http.StatusBadGateway)
+			logger.Printf("Error fetching JSON from Python service: %v", err)
+			return
+		}
 		defer resp.Body.Close()
 
-		io.Copy(w, resp.Body)
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			http.Error(w, "Failed to stream response", http.StatusInternalServerError)
+			logger.Printf("Error copying response body: %v", err)
+		}
 	})
 }
