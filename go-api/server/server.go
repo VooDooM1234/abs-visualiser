@@ -53,6 +53,22 @@ func launchPythonMicroservice(config *config.Config) {
 	log.Printf("Python microservice running at http://%s:%s\n", config.Host, config.PlotServicePort)
 }
 
+// STOP STEALIN MY PORTS
+func killPort(port string) error {
+	// PowerShell command to get PID and kill it
+	psCommand := fmt.Sprintf(`
+$connections = Get-NetTCPConnection -LocalPort %s -ErrorAction SilentlyContinue;
+foreach ($c in $connections) {
+    Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue
+}`, port)
+
+	cmd := exec.Command("powershell", "-Command", psCommand)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd.Run()
+}
+
 func Run(ctx context.Context, w io.Writer, args []string) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
@@ -79,6 +95,15 @@ func Run(ctx context.Context, w io.Writer, args []string) error {
 		Handler: srv,
 	}
 
+	// client := fetch.NewFetch("https", "data.api.abs.gov.au", 0)
+	// err = client.ABSRestDataflowAll(databaseConnect)
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return err
+	// }
+
+	killPort(config.PlotServicePort)
+	killPort(config.Port)
 	launchPythonMicroservice(config)
 
 	go func() {

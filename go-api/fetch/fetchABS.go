@@ -1,9 +1,12 @@
 package fetch
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 
+	"github.com/VooDooM1234/abs-visualiser/db"
 	"github.com/gocarina/gocsv"
 )
 
@@ -69,4 +72,75 @@ func (f *Fetch) ABSRestDataCSV(dataflowIdentifier, dataKey string) ([]Observatio
 	}
 
 	return observations, nil
+}
+
+// https://data.api.abs.gov.au/rest/dataflow/all?detail=allstubs
+// Help func to load into database, do not use in live server - takes ages to get response from ABS API
+func (f *Fetch) ABSRestDataflowAll(db *db.Database) error {
+
+	type ABSDataflow struct {
+		ID                  string `json:"id"`
+		Version             string `json:"version"`
+		AgencyID            string `json:"agencyID"`
+		IsExternalReference bool   `json:"isExternalReference"`
+		IsFinal             bool   `json:"isFinal"`
+		Name                string `json:"name"`
+	}
+
+	type ABSDataflowWrapper struct {
+		Data struct {
+			Dataflows []ABSDataflow `json:"dataflows"`
+		} `json:"data"`
+	}
+
+	endPoint := "/rest/dataflow/all"
+	path := Path{
+		Endpoint: endPoint,
+		Params: map[string]string{
+			"detail": "allstubs",
+		},
+	}
+
+	body, err := f.GetJSONHeader(path)
+	if err != nil {
+		return fmt.Errorf("fetching rest/dataflow/all: %w", err)
+	}
+
+	var wrapper ABSDataflowWrapper
+	if err := json.Unmarshal(body, &wrapper); err != nil {
+		return fmt.Errorf("error unmarshalling JSON: %w", err)
+	}
+
+	//write to static file and database
+	for _, absDataflow := range wrapper.Data.Dataflows {
+		_, err = db.Conn.Exec(db.Ctx,
+			`INSERT INTO "abs_static_dataflow" (
+			id,
+			version,
+			agency_id,
+			is_external_reference,
+			is_final,
+			name
+		)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (id, version)
+         DO UPDATE SET agency_id = EXCLUDED.agency_id,
+		 			is_external_reference = EXCLUDED.is_external_reference,
+					is_final = EXCLUDED.is_final,
+					name = EXCLUDED.name`,
+			absDataflow.ID, absDataflow.Version, absDataflow.AgencyID, absDataflow.IsExternalReference, absDataflow.IsFinal, absDataflow.Name,
+		)
+
+		if err != nil {
+			return fmt.Errorf("upsert failed: %w", err)
+		}
+	}
+	// log.print(res)
+
+	err = os.WriteFile("../static/data/ABSDataflowAll.json", body, 0777)
+	if err != nil {
+		return fmt.Errorf("Error writing to JSON %w", err)
+	}
+
+	return err
 }

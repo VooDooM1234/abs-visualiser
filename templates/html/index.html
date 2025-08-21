@@ -22,7 +22,9 @@
 
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@2.0.6/dist/htmx.min.js"></script>
-    <script>htmx.logAll();</script>
+    <script>
+      htmx.logAll();
+    </script>
 
     <!-- Plotly JS -->
     <script
@@ -37,15 +39,15 @@
   </head>
 
   <body class="bg-light">
-   <!-- https://www.w3schools.com/bootstrap5/bootstrap_flex.php -->
-    <div class="d-flex" style="min-height: 100vh;">
+    <!-- https://www.w3schools.com/bootstrap5/bootstrap_flex.php -->
+    <div class="d-flex" style="min-height: 100vh">
       <!-- Sidebar container (loaded via HTMX) -->
       <div
         id="sidebar-container"
         hx-get="/sidebar"
         hx-trigger="load"
         hx-swap="innerHTML"
-        style="min-width: 250px;"
+        style="min-width: 250px"
         class="bg-light border-end"
       >
         <div class="p-3">Loading sidebar...</div>
@@ -65,7 +67,27 @@
             hx-swap="innerHTML"
             class="mb-5"
           ></div>
-
+          <h5 id="table_title" class="text-center mb-4">ABS Available Data</h5>
+          <table
+            class="table table-striped"
+            style="position: sticky; top: 0; z-index: 10"
+          >
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Name</th>
+                <th scope="col">Version</th>
+                <th scope="col">Agency ID</th>
+              </tr>
+            </thead>
+            <tbody
+              id="table_abs_dataflow"
+              hx-get="/abs_dataflow/"
+              hx-trigger="load"
+              hx-target="this"
+              hx-swap="innerHTML"
+            ></tbody>
+          </table>
         </div>
       </div>
     </div>

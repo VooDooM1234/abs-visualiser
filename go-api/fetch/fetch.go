@@ -62,3 +62,44 @@ func (f *Fetch) Get(path Path) ([]byte, error) {
 
 	return body, nil
 }
+
+func (f *Fetch) GetJSONHeader(path Path) ([]byte, error) {
+	url := url.URL{
+		Scheme: f.Scheme,
+		Host:   f.Host,
+		Path:   path.Endpoint,
+	}
+
+	q := url.Query()
+	for k, v := range path.Params {
+		q.Set(k, v)
+	}
+	url.RawQuery = q.Encode()
+
+	fmt.Println("Fetching with JSON header:", url.String())
+
+	req, err := http.NewRequest("GET", url.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating HTTP request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/vnd.sdmx.structure+json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	if resp.StatusCode > 299 {
+		return nil, fmt.Errorf("response failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return body, nil
+}

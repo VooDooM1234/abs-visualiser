@@ -9,6 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// pgx docs:
+// https://pkg.go.dev/github.com/jackc/pgx/v5
+
 type Database struct {
 	Conn *pgx.Conn
 	Ctx  context.Context
@@ -76,4 +79,67 @@ func (d *Database) UpsertDataABSCPI(data interface{}) error {
 	}
 
 	return nil
+}
+
+type ABSDataflow struct {
+	ID                  string
+	Version             string
+	AgencyID            string
+	IsExternalReference bool
+	IsFinal             bool
+	Name                string
+}
+
+type ABSDataflowList struct {
+	Dataflows []ABSDataflow
+}
+
+func (d *Database) GetABSDataflow() ([]ABSDataflow, error) {
+
+	log.Print("Fetching ABS dataflow list")
+	var absDataflows []ABSDataflow
+	query := `SELECT id, version, agency_id, is_external_reference, is_final, name FROM abs_static_dataflow`
+	rows, err := d.Conn.Query(d.Ctx, query)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Query failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	for rows.Next() {
+		var dataflow ABSDataflow
+		if err := rows.Scan(&dataflow.ID, &dataflow.Version, &dataflow.AgencyID, &dataflow.IsExternalReference, &dataflow.IsFinal, &dataflow.Name); err != nil {
+			return nil, fmt.Errorf("error scanning row: %w", err)
+		}
+		absDataflows = append(absDataflows, dataflow)
+	}
+
+	var absDataflowList ABSDataflowList
+	absDataflowList.Dataflows = absDataflows
+
+	return absDataflows, nil
+}
+
+func (d *Database) GetABSDataflowSpecfic(id string) ([]ABSDataflow, error) {
+
+	log.Print("Fetching ABS dataflow list")
+	var absDataflows []ABSDataflow
+	query := fmt.Sprintf(`SELECT id, version, agency_id, is_external_reference, is_final, name FROM abs_static_dataflow where id = '%s'`, id)
+	rows, err := d.Conn.Query(d.Ctx, query)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Query failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	for rows.Next() {
+		var dataflow ABSDataflow
+		if err := rows.Scan(&dataflow.ID, &dataflow.Version, &dataflow.AgencyID, &dataflow.IsExternalReference, &dataflow.IsFinal, &dataflow.Name); err != nil {
+			return nil, fmt.Errorf("error scanning row: %w", err)
+		}
+		absDataflows = append(absDataflows, dataflow)
+	}
+
+	var absDataflowList ABSDataflowList
+	absDataflowList.Dataflows = absDataflows
+
+	return absDataflows, nil
 }

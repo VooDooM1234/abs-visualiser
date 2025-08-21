@@ -6,8 +6,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/VooDooM1234/abs-visualiser/config"
+	"github.com/VooDooM1234/abs-visualiser/db"
 )
 
 // https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/#maker-funcs-return-the-handler
@@ -16,6 +18,34 @@ import (
 //         // handler logic
 //     })
 // }s
+
+func validateGraphName(name string) error {
+	var allowedGraphs = map[string]bool{
+		"line":    true,
+		"bar":     true,
+		"pie":     true,
+		"scatter": true,
+	}
+	if _, ok := allowedGraphs[name]; !ok {
+		return fmt.Errorf("invalid graph name: %s", name)
+	}
+	return nil
+}
+
+// Fix this to not run query every time and finish caching function
+func validateDataflowName(id string, db db.Database) error {
+	allowedDataflows, err := db.GetABSDataflowSpecfic(id)
+	if err != nil {
+		return fmt.Errorf("error fetching dataflow names: %w", err)
+	}
+
+	for _, dataflow := range allowedDataflows {
+		if dataflow.ID == strings.ToUpper(id) {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid dataflow name: %s", id)
+}
 
 func HealthHander(config *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +77,71 @@ func HomePageHandler(config *config.Config, logger *log.Logger) http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		log.Print("Home Page")
+	})
+}
+
+func ABSDataflowHandler(config *config.Config, logger *log.Logger, db *db.Database) http.Handler {
+	path := config.HTMLTemplates + "abs_dataflow.html"
+	tmpl := template.Must(template.ParseFiles(path))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, err := db.GetABSDataflow()
+		if err != nil {
+			logger.Printf("Error fetching ABS dataflow: %v", err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html")
+		if err := tmpl.Execute(w, data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			logger.Printf("Error executing template: %v", err)
+			return
+		}
+		logger.Print("ABS Dataflow Page")
+	})
+}
+
+// Plothandler endpoint /plot/{graphName}/{dataflow}
+func PlotHandler(config *config.Config, logger *log.Logger, db *db.Database) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		urlParts := strings.Split(r.URL.Path, "/")
+		pathMap := make(map[string]string)
+		if len(urlParts) > 1 {
+			pathMap["base"] = urlParts[1]
+		}
+		if len(urlParts) > 2 {
+			pathMap["graphName"] = urlParts[2]
+		}
+		if len(urlParts) > 3 {
+			pathMap["dataflow"] = urlParts[3]
+		}
+
+		if err := validateGraphName(pathMap["graphName"]); err != nil {
+			http.Error(w, fmt.Sprintf("Invalid graph name: %s", pathMap["graphName"]), http.StatusBadRequest)
+			logger.Printf("Invalid graph name: %s", pathMap["graphName"])
+			return
+		}
+
+		if err := validateDataflowName(pathMap["dataflow"], *db); err != nil {
+			http.Error(w, fmt.Sprintf("Invalid dataflow name: %s", pathMap["dataflow"]), http.StatusBadRequest)
+			logger.Printf("Invalid dataflow name: %s", pathMap["dataflow"])
+			return
+		}
+
+		url := fmt.Sprintf("http://%s:%s/plot/%s/%s", config.Host, config.PlotServicePort, pathMap["graphName"], pathMap["dataflow"])
+		resp, err := http.Get(url)
+		if err != nil {
+			http.Error(w, "Python service unavailable", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+
+		defer resp.Body.Close()
+		htmlBytes, _ := io.ReadAll(resp.Body)
+		htmlString := string(htmlBytes)
+		fmt.Fprint(w, htmlString)
 	})
 }
 
