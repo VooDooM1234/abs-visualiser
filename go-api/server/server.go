@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/VooDooM1234/abs-visualiser/config"
-	"github.com/VooDooM1234/abs-visualiser/db"
+	"github.com/VooDooM1234/abs-visualiser/go-api/config"
+	"github.com/VooDooM1234/abs-visualiser/go-api/db"
 )
 
 func NewServer(
@@ -32,11 +32,11 @@ func NewServer(
 }
 
 func launchPythonMicroservice(config *config.Config) {
-	//.\.venv\Scripts\python.exe -m uvicorn python_ds.plot_service:app --host 127.0.0.1 --port 8081
+	//.\.venv\Scripts\python.exe -m uvicorn python_ds.app:app --host 127.0.0.1 --port 8081
 	cmd := exec.Command(
 		config.PythonPath,
 		"-m", "uvicorn",
-		"python_ds.main:app",
+		config.PlotServiceScript,
 		"--host", config.Host,
 		"--port", config.PlotServicePort,
 		"--app-dir", "..",

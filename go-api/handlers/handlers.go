@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/VooDooM1234/abs-visualiser/config"
-	"github.com/VooDooM1234/abs-visualiser/db"
+	"github.com/VooDooM1234/abs-visualiser/go-api/config"
+	"github.com/VooDooM1234/abs-visualiser/go-api/db"
 )
 
 // https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/#maker-funcs-return-the-handler

@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/VooDooM1234/abs-visualiser/config"
-	"github.com/VooDooM1234/abs-visualiser/db"
-	"github.com/VooDooM1234/abs-visualiser/handlers"
+	"github.com/VooDooM1234/abs-visualiser/go-api/config"
+	"github.com/VooDooM1234/abs-visualiser/go-api/db"
+	"github.com/VooDooM1234/abs-visualiser/go-api/handlers"
 )
 
 func AddRoutes(

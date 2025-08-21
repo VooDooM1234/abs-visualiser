@@ -29,7 +29,7 @@ var keys apiKeys
 var config Config
 
 func Init() (*Config, error) {
-	_ = godotenv.Load("../.env")
+	_ = godotenv.Load(".env")
 
 	config.postgresURL = os.Getenv("DATABASE_URL")
 	keys.weather = os.Getenv("WEATHER_API_KEY")
@@ -46,7 +46,7 @@ func Init() (*Config, error) {
 		log.Fatal("DATABASE_URL not set")
 	}
 
-	file, err := os.Open("../config.json")
+	file, err := os.Open("config.json")
 	if err != nil {
 		return nil, err
 	}

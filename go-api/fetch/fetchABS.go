@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/VooDooM1234/abs-visualiser/db"
+	"github.com/VooDooM1234/abs-visualiser/go-api/db"
 	"github.com/gocarina/gocsv"
 )
 

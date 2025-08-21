@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/VooDooM1234/abs-visualiser/server"
+	"github.com/VooDooM1234/abs-visualiser/go-api/server"
 )
 
 func main() {
