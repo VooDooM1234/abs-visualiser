@@ -22,6 +22,7 @@ type Config struct {
 	PlotServiceScript string `json:"plot_service_script"`
 	Host              string `json:"host"`
 	Port              string `json:"port"`
+	HTMLTemplates     string `json:"HTMLTemplates"`
 }
 
 var keys apiKeys

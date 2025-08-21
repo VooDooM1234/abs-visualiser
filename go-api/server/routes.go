@@ -16,6 +16,8 @@ func AddRoutes(
 	db *db.Database,
 ) {
 	mux.Handle("/", handlers.HomePageHandler(cfg, logger))
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("../static"))))
+	mux.Handle("/sidebar", handlers.SidebarHandler(cfg, logger))
 	//helper routes
 	mux.Handle("/health", handlers.HealthHander(cfg, logger))
 	//plotting routes

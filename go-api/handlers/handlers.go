@@ -15,7 +15,7 @@ import (
 //     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 //         // handler logic
 //     })
-// }
+// }s
 
 func HealthHander(config *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -24,10 +24,24 @@ func HealthHander(config *config.Config, logger *log.Logger) http.Handler {
 	})
 }
 
+func SidebarHandler(config *config.Config, logger *log.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		path := config.HTMLTemplates + "sidebar.html"
+		tmpl := template.Must(template.ParseFiles(path))
+
+		if err := tmpl.Execute(w, nil); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		log.Print("Sidebar loaded")
+	})
+}
+
 func HomePageHandler(config *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		tmpl := template.Must(template.ParseFiles("../templates/index.html"))
+		path := config.HTMLTemplates + "index.html"
+		tmpl := template.Must(template.ParseFiles(path))
 
 		if err := tmpl.Execute(w, nil); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

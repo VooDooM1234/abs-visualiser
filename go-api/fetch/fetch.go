@@ -8,15 +8,15 @@ import (
 )
 
 // FetchData is a generic API client for any service
-type FetchData struct {
+type Fetch struct {
 	Scheme string
 	Host   string
 	Port   int
 }
 
 // NewFetchData is the constructor for a generic API client
-func NewFetchData(scheme, host string, port int) *FetchData {
-	return &FetchData{
+func NewFetch(scheme, host string, port int) *Fetch {
+	return &Fetch{
 		Scheme: scheme,
 		Host:   host,
 		Port:   port,
@@ -30,7 +30,7 @@ type Path struct {
 }
 
 // HTTP GET from endpoint returns byte array of data for unmarshaling
-func (f *FetchData) Get(path Path) ([]byte, error) {
+func (f *Fetch) Get(path Path) ([]byte, error) {
 	url := url.URL{
 		Scheme: f.Scheme,
 		Host:   f.Host,
