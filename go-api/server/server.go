@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -53,7 +53,7 @@ func launchPythonMicroservice(config *config.Config) {
 	log.Printf("Python microservice running at http://%s:%s\n", config.Host, config.PlotServicePort)
 }
 
-func run(ctx context.Context, w io.Writer, args []string) error {
+func Run(ctx context.Context, w io.Writer, args []string) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 	logger := log.Default()
