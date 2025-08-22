@@ -72,6 +72,13 @@
 
           <!-- ABS Dataflow Table -->
           <h5 id="table_title" class="text-center mb-4">ABS Available Data</h5>
+          <div
+            hx-get="/abs_dataflow/"
+            hx-trigger="load"
+            hx-target="#table_abs_dataflow"
+            hx-swap="innerHTML"
+          ></div>
+
           <table id="abs-dataflow-table" class="table table-striped">
             <thead>
               <tr>
@@ -82,15 +89,9 @@
                 <th>View Data</th>
               </tr>
             </thead>
-            <tbody
-              id="table_abs_dataflow"
-              hx-get="/abs_dataflow/"
-              hx-trigger="load"
-              hx-target="this"
-              hx-swap="innerHTML"
-            >
+            <tbody id="table_abs_dataflow">
               <tr>
-                <td colspan="4" class="text-center">Loading data...</td>
+                <td colspan="5" class="text-center">Loading data...</td>
               </tr>
             </tbody>
           </table>

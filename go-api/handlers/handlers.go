@@ -34,7 +34,9 @@ func validateGraphName(name string) error {
 
 // Fix this to not run query every time and finish caching function
 func validateDataflowName(id string, db db.Database) error {
-	allowedDataflows, err := db.GetABSDataflowSpecfic(id)
+	query := fmt.Sprintf("SELECT id FROM abs_static_dataflow WHERE id = '%s'", id)
+
+	allowedDataflows, err := db.GetABSDataflow(query)
 	if err != nil {
 		return fmt.Errorf("error fetching dataflow names: %w", err)
 	}
@@ -83,9 +85,10 @@ func HomePageHandler(config *config.Config, logger *log.Logger) http.Handler {
 func ABSDataflowHandler(config *config.Config, logger *log.Logger, db *db.Database) http.Handler {
 	path := config.HTMLTemplates + "abs_dataflow.html"
 	tmpl := template.Must(template.ParseFiles(path))
+	query := "SELECT id, version, agency_id, is_external_reference, is_final, name FROM abs_static_dataflow"
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, err := db.GetABSDataflow()
+		data, err := db.GetABSDataflow(query)
 		if err != nil {
 			logger.Printf("Error fetching ABS dataflow: %v", err)
 			return
