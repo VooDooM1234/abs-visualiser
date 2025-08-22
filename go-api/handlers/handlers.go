@@ -145,24 +145,6 @@ func PlotHandler(config *config.Config, logger *log.Logger, db *db.Database) htt
 	})
 }
 
-func PlotABSCPIHandler(config *config.Config, logger *log.Logger) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		url := fmt.Sprintf("http://%s:%s/plot/bar-abs-cpi", config.Host, config.PlotServicePort)
-		resp, err := http.Get(url)
-
-		if err != nil {
-			http.Error(w, "Python service unavailable", http.StatusBadGateway)
-			return
-		}
-
-		defer resp.Body.Close()
-		htmlBytes, _ := io.ReadAll(resp.Body)
-		htmlString := string(htmlBytes)
-		fmt.Fprint(w, htmlString)
-	})
-}
-
 func PlotTestHandler(config *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")

@@ -60,13 +60,15 @@
           </h1>
 
           <!-- Plot containers -->
+
           <div
-            id="plot-bar-abs-cpi"
-            hx-get="/plot/bar-abs-cpi/"
+            id="sample"
+            hx-get="/plot/line/cpi"
             hx-trigger="load"
             hx-swap="innerHTML"
             class="mb-5"
           ></div>
+          <!-- All dataflow table -->
           <h5 id="table_title" class="text-center mb-4">ABS Available Data</h5>
           <table
             class="table table-striped"

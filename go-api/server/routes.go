@@ -22,7 +22,6 @@ func AddRoutes(
 	//helper routes
 	mux.Handle("/health", handlers.HealthHander(cfg, logger))
 	//plotting routes
-	mux.Handle("/plot/bar-abs-cpi/", handlers.PlotABSCPIHandler(cfg, logger))
 	mux.Handle("/plot/", handlers.PlotHandler(cfg, logger, db))
 
 	mux.Handle("/plot/test/", handlers.PlotTestHandler(cfg, logger))
