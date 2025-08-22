@@ -78,7 +78,7 @@ func (d *Database) UpsertDataABSCPI(data interface{}) error {
 
 // Get ABS dataflows
 func (d *Database) GetABSDataflow(query string) ([]ABSDataflow, error) {
-	log.Print("Fetching ABS dataflow list")
+	log.Print("Fetching ABS dataflow list with query: ", query)
 
 	var absDataflows []ABSDataflow
 	rows, err := d.Pool.Query(d.Ctx, query)

@@ -34,7 +34,7 @@ func validateGraphName(name string) error {
 
 // Fix this to not run query every time and finish caching function
 func validateDataflowName(id string, db db.Database) error {
-	query := fmt.Sprintf("SELECT id FROM abs_static_dataflow WHERE id = '%s'", id)
+	query := fmt.Sprintf("SELECT * FROM abs_static_dataflow WHERE id = '%s'", id)
 
 	allowedDataflows, err := db.GetABSDataflow(query)
 	if err != nil {
@@ -49,7 +49,7 @@ func validateDataflowName(id string, db db.Database) error {
 	return fmt.Errorf("invalid dataflow name: %s", id)
 }
 
-func HealthHander(config *config.Config, logger *log.Logger) http.Handler {
+func HealthHandler(config *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -130,6 +130,7 @@ func PlotHandler(config *config.Config, logger *log.Logger, db *db.Database) htt
 		if err := validateDataflowName(dataflow, *db); err != nil {
 			http.Error(w, fmt.Sprintf("Invalid dataflow name: %s", dataflow), http.StatusBadRequest)
 			logger.Printf("Invalid dataflow name: %s", dataflow)
+			logger.Printf("Dataflow validation failed: %v", err)
 			return
 		}
 
