@@ -124,7 +124,7 @@ func PlotHandler(config *config.Config, logger *log.Logger, db *db.Database) htt
 			return
 		}
 
-		if err := validateDataflowName(pathMap["dataflow"], *db); err != nil {
+		if err := validateDataflowName(strings.ToUpper(pathMap["dataflow"]), *db); err != nil {
 			http.Error(w, fmt.Sprintf("Invalid dataflow name: %s", pathMap["dataflow"]), http.StatusBadRequest)
 			logger.Printf("Invalid dataflow name: %s", pathMap["dataflow"])
 			return

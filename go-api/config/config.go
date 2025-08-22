@@ -35,12 +35,12 @@ func Init() (*Config, error) {
 	keys.weather = os.Getenv("WEATHER_API_KEY")
 	keys.abs = os.Getenv("ABS_API_KEY")
 
-	if keys.weather == "" {
-		log.Fatal("Missing WEATHER_API_KEY in environment!")
-	}
-	if keys.abs == "" {
-		log.Fatal("Missing ABS_API_KEY in environment!")
-	}
+	// if keys.weather == "" {
+	// 	log.Fatal("Missing WEATHER_API_KEY in environment!")
+	// }
+	// if keys.abs == "" {
+	// 	log.Fatal("Missing ABS_API_KEY in environment!")
+	// }
 
 	if config.postgresURL == "" {
 		log.Fatal("DATABASE_URL not set")
