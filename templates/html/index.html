@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ABS Data Visualiser</title>
 
     <!-- Bootstrap CSS -->
     <link
@@ -16,9 +17,14 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
     />
 
+    <!-- DataTables CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"
+    />
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/styles.css" />
-    <link rel="stylesheet" href="/css/dashboard.css" />
 
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@2.0.6/dist/htmx.min.js"></script>
@@ -31,15 +37,9 @@
       src="https://cdn.plot.ly/plotly-3.1.0.min.js"
       charset="utf-8"
     ></script>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    <title>Home Page</title>
   </head>
 
   <body class="bg-light">
-    <!-- https://www.w3schools.com/bootstrap5/bootstrap_flex.php -->
     <div class="d-flex" style="min-height: 100vh">
       <!-- Sidebar container (loaded via HTMX) -->
       <div
@@ -59,27 +59,27 @@
             Australia Bureau of Statistics Data Visualiser
           </h1>
 
-          <!-- Plot containers -->
-
+          <!-- Plot container loaded via HTMX -->
           <div
             id="sample"
             hx-get="/plot/line/cpi"
             hx-trigger="load"
-            hx-swap="innerHTML"
+            hx-swap="outerHTML"
             class="mb-5"
-          ></div>
-          <!-- All dataflow table -->
-          <h5 id="table_title" class="text-center mb-4">ABS Available Data</h5>
-          <table
-            class="table table-striped"
-            style="position: sticky; top: 0; z-index: 10"
           >
+            Loading plot...
+          </div>
+
+          <!-- ABS Dataflow Table -->
+          <h5 id="table_title" class="text-center mb-4">ABS Available Data</h5>
+          <table id="abs-dataflow-table" class="table table-striped">
             <thead>
               <tr>
-                <th scope="col">ID</th>
-                <th scope="col">Name</th>
-                <th scope="col">Version</th>
-                <th scope="col">Agency ID</th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Version</th>
+                <th>Agency ID</th>
+                <th>View Data</th>
               </tr>
             </thead>
             <tbody
@@ -88,10 +88,47 @@
               hx-trigger="load"
               hx-target="this"
               hx-swap="innerHTML"
-            ></tbody>
+            >
+              <tr>
+                <td colspan="4" class="text-center">Loading data...</td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </div>
     </div>
+
+    <!-- jQuery (required for DataTables) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <script>
+      // Initialize DataTable after HTMX swaps in table rows
+      function initAbsDataTable() {
+        if ($.fn.DataTable.isDataTable("#abs-dataflow-table")) {
+          $("#abs-dataflow-table").DataTable().destroy();
+        }
+        $("#abs-dataflow-table").DataTable({
+          paging: true,
+          searching: true,
+          ordering: true,
+          info: true,
+          lengthChange: true,
+          deferRender: true,
+        });
+      }
+
+      document.body.addEventListener("htmx:afterSwap", (evt) => {
+        // Re-initialize table when tbody content is swapped
+        if (evt.target.id === "table_abs_dataflow") {
+          initAbsDataTable();
+        }
+      });
+    </script>
   </body>
 </html>
