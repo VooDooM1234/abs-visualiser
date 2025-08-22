@@ -108,12 +108,12 @@ func (f *Fetch) ABSRestDataflowAll(db *db.Database) error {
 
 	var wrapper ABSDataflowWrapper
 	if err := json.Unmarshal(body, &wrapper); err != nil {
-		return fmt.Errorf("error unmarshalling JSON: %w", err)
+		return fmt.Errorf("error unmarshaling JSON: %w", err)
 	}
 
 	//write to static file and database
 	for _, absDataflow := range wrapper.Data.Dataflows {
-		_, err = db.Conn.Exec(db.Ctx,
+		_, err = db.Pool.Exec(db.Ctx,
 			`INSERT INTO "abs_static_dataflow" (
 			id,
 			version,
