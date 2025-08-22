@@ -6,79 +6,17 @@ import (
 	"log"
 	"os"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// pgx docs:
-// https://pkg.go.dev/github.com/jackc/pgx/v5
-
 type Database struct {
-	Conn *pgx.Conn
+	Pool *pgxpool.Pool
 	Ctx  context.Context
 }
 
 type ABS_CPI struct {
 	TIME_PERIOD string
 	VALUE       float64
-}
-
-// start postgres server
-func StartUp() {
-
-}
-
-func NewDatabase(ctx context.Context) (*Database, error) {
-	conn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
-	if err != nil {
-		return nil, fmt.Errorf("unable to connect to database: %w", err)
-	}
-
-	log.Print("Connected to database")
-
-	return &Database{
-		Conn: conn,
-		Ctx:  ctx,
-	}, nil
-}
-
-func (db *Database) Close() {
-	db.Conn.Close(db.Ctx)
-}
-
-// boiler plate query for refrene
-func (db *Database) boilerplater() error {
-	rows, err := db.Conn.Query(db.Ctx, "SELECT * FROM users")
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		// process rows
-	}
-	return nil
-}
-
-func (d *Database) UpsertDataABSCPI(data interface{}) error {
-	log.Print("INSERTING ABS CPI data")
-
-	cpiData, ok := data.(ABS_CPI)
-	if !ok {
-		return fmt.Errorf("invalid type: expected ABS_CPI, got %T", data)
-	}
-
-	_, err := d.Conn.Exec(d.Ctx,
-		`INSERT INTO "ABS_CPI" (TIME_PERIOD, VALUE)
-         VALUES ($1, $2)
-         ON CONFLICT (TIME_PERIOD)
-         DO UPDATE SET VALUE = EXCLUDED.VALUE`,
-		cpiData.TIME_PERIOD, cpiData.VALUE,
-	)
-	if err != nil {
-		return fmt.Errorf("upsert failed: %w", err)
-	}
-
-	return nil
 }
 
 type ABSDataflow struct {
@@ -94,52 +32,79 @@ type ABSDataflowList struct {
 	Dataflows []ABSDataflow
 }
 
-func (d *Database) GetABSDataflow() ([]ABSDataflow, error) {
-
-	log.Print("Fetching ABS dataflow list")
-	var absDataflows []ABSDataflow
-	query := `SELECT id, version, agency_id, is_external_reference, is_final, name FROM abs_static_dataflow`
-	rows, err := d.Conn.Query(d.Ctx, query)
+// Create a new database pool
+func NewDatabase(ctx context.Context) (*Database, error) {
+	dbURL := os.Getenv("DATABASE_URL")
+	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Query failed: %v\n", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("unable to connect to database: %w", err)
 	}
 
-	for rows.Next() {
-		var dataflow ABSDataflow
-		if err := rows.Scan(&dataflow.ID, &dataflow.Version, &dataflow.AgencyID, &dataflow.IsExternalReference, &dataflow.IsFinal, &dataflow.Name); err != nil {
-			return nil, fmt.Errorf("error scanning row: %w", err)
-		}
-		absDataflows = append(absDataflows, dataflow)
-	}
+	log.Print("Connected to database using pool")
 
-	var absDataflowList ABSDataflowList
-	absDataflowList.Dataflows = absDataflows
-
-	return absDataflows, nil
+	return &Database{
+		Pool: pool,
+		Ctx:  ctx,
+	}, nil
 }
 
-func (d *Database) GetABSDataflowSpecfic(id string) ([]ABSDataflow, error) {
+// Close the pool
+func (db *Database) Close() {
+	db.Pool.Close()
+}
 
-	log.Print("Fetching ABS dataflow list")
-	var absDataflows []ABSDataflow
-	query := fmt.Sprintf(`SELECT id, version, agency_id, is_external_reference, is_final, name FROM abs_static_dataflow where id = '%s'`, id)
-	rows, err := d.Conn.Query(d.Ctx, query)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Query failed: %v\n", err)
-		os.Exit(1)
+// Upsert CPI data
+func (d *Database) UpsertDataABSCPI(data interface{}) error {
+	log.Print("INSERTING ABS CPI data")
+
+	cpiData, ok := data.(ABS_CPI)
+	if !ok {
+		return fmt.Errorf("invalid type: expected ABS_CPI, got %T", data)
 	}
+
+	_, err := d.Pool.Exec(d.Ctx,
+		`INSERT INTO "ABS_CPI" (TIME_PERIOD, VALUE)
+         VALUES ($1, $2)
+         ON CONFLICT (TIME_PERIOD)
+         DO UPDATE SET VALUE = EXCLUDED.VALUE`,
+		cpiData.TIME_PERIOD, cpiData.VALUE,
+	)
+	if err != nil {
+		return fmt.Errorf("upsert failed: %w", err)
+	}
+
+	return nil
+}
+
+// Get ABS dataflows
+func (d *Database) GetABSDataflow(query string) ([]ABSDataflow, error) {
+	log.Print("Fetching ABS dataflow list")
+
+	var absDataflows []ABSDataflow
+	rows, err := d.Pool.Query(d.Ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query failed: %w", err)
+	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var dataflow ABSDataflow
-		if err := rows.Scan(&dataflow.ID, &dataflow.Version, &dataflow.AgencyID, &dataflow.IsExternalReference, &dataflow.IsFinal, &dataflow.Name); err != nil {
+		if err := rows.Scan(
+			&dataflow.ID,
+			&dataflow.Version,
+			&dataflow.AgencyID,
+			&dataflow.IsExternalReference,
+			&dataflow.IsFinal,
+			&dataflow.Name,
+		); err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
 		absDataflows = append(absDataflows, dataflow)
 	}
 
-	var absDataflowList ABSDataflowList
-	absDataflowList.Dataflows = absDataflows
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
 
 	return absDataflows, nil
 }
