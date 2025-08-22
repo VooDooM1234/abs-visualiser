@@ -1,11 +1,18 @@
-<!-- Dataflow table frag -->
-
 {{range .}}
 <tr>
   <td>{{.ID}}</td>
   <td>{{.Name}}</td>
   <td>{{.Version}}</td>
   <td>{{.AgencyID}}</td>
-  <td><button type="button" class="btn btn-success"> View Data</button></td>
+  <td>
+    <button
+      class="btn btn-success"
+      type="button"
+      hx-post="/dashboard-retrieve/"
+      hx-vals='{"dataflowId": "{{.ID}}"}'
+    >
+      View Data
+    </button>
+  </td>
 </tr>
 {{end}}

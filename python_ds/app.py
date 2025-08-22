@@ -8,23 +8,25 @@ import plotly.express as px
 import plotly.io as pio
 import pandas as pd
 from python_ds.db import init_db
-
+import logging
 from .config import load_config
 import json
+from pydantic import BaseModel
 
 app = FastAPI()
 db_conn = init_db(load_config())
+logger = logging.getLogger("uvicorn.error")
 
 def bar_plot(df):
-    return px.bar(df, x="time_period", y="value", title="Bar Chart")
+    return px.bar(df, x="timePeriod", y="value", title="Bar Chart")
 def line_plot(df):
-    return px.line(df, x="time_period", y="value", title="Line Chart")
+    return px.line(df, x="timePeriod", y="value", title="Line Chart")
 def scatter_plot(df):
-    return px.scatter(df, x="time_period", y="value", title="Scatter Plot")
+    return px.scatter(df, x="timePeriod", y="value", title="Scatter Plot")
 def pie_plot(df):
-    return px.pie(df, names="time_period", values="value", title="Pie Chart")
+    return px.pie(df, names="timePeriod", values="value", title="Pie Chart")
 def histogram_plot(df):
-    return px.histogram(df, x="time_period", y="value", title="Histogram")
+    return px.histogram(df, x="timePeriod", y="value", title="Histogram")
 
 graphRegistry = {
     "bar": bar_plot,
@@ -66,15 +68,69 @@ async def get_abs_cpi_plot(graphName: str, dataflow: str):
          
         plot_func = graphRegistry.get(graphName)
         if plot_func is None:
+            logger.error(f"Graph function {graphName} not found for dataflow {dataflow}")
             return HTMLResponse(content="<h3>Graph not found</h3>", status_code=404)
         #TODO: Add more params for labels, titles, etc.
         fig = plot_func(df)
         if fig is None:
+            logger.error(f"Graph function {graphName} returned None for dataflow {dataflow}")
             return HTMLResponse(content="<h3>Graph not found</h3>", status_code=404)
         return pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
 
     except Exception as e:
+        logger.error(f"Error generating plot for graphName {graphName} and dataflow {dataflow}: {e}")
+    
         return HTMLResponse(content=f"<h3>Micro Service: Error generating plot: {e}</h3>", status_code=500)
+
+@app.get("/dashboard/database/{dataflowid}/", response_class=HTMLResponse)
+async def get_dashboard(dataflowid: str):
+    try:
+        df = dataflow_to_query(dataflowid)
+        if df.empty:
+            logger.error(f"No data available for dataflowid: {dataflowid}")
+            return HTMLResponse(content="<h3>No data available for the selected dataflowid</h3>", status_code=404)
+        
+        for graphName, plot_func in graphRegistry.items():
+            fig = plot_func(df)
+
+            html_plot = pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
+           
+            combined_html += f"<div id='{graphName}' class='plot-container'>{html_plot}</div>"
+
+        return HTMLResponse(content=combined_html)
+
+    except Exception as e:
+        logger.error(f"Error generating dashboard for dataflowid {dataflowid}: {e}")    
+        return HTMLResponse(content=f"Error:{e}</h3>", status_code=500)
+    
+#Docs: https://fastapi.tiangolo.com/tutorial/body/#import-pydantics-basemodel   
+
+class DashboardRequest(BaseModel):
+    dataflowid: str
+    timePeriod  : str
+    value: float  
+    
+@app.post("/dashboard/api/{dataflowid}/", response_class=HTMLResponse)
+async def get_dashboard(dataflowid: str, dashboardRequest: DashboardRequest):
+    try:
+        data_dict = dashboardRequest.model_dump()
+        df = pd.DataFrame([data_dict])
+        if df.empty:
+            logger.error(f"No data available for dataflowid: {dataflowid}")
+            return HTMLResponse(content="", status_code=404)
+        
+        for graphName, plot_func in graphRegistry.items():
+            fig = plot_func(df)
+
+            html_plot = pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
+           
+            combined_html += f"<div id='{graphName}' class='plot-container'>{html_plot}</div>"
+
+        return HTMLResponse(content=combined_html)
+
+    except Exception as e:
+        logger.error(f"Error generating dashboard for dataflowid {dataflowid}: {e}")    
+        return HTMLResponse(content=f"Error</h3>", status_code=500)
 
 
 # for isolation testing, run with:

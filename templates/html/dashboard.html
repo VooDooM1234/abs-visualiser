@@ -8,3 +8,11 @@
 >
   Loading plot...
 </div>
+
+<div class="dashboard">
+  <div
+    hx-get="/dashboard/{{.ID}}"
+    hx-trigger="#dashboard"
+    hx-swap="innerHTML"
+  ></div>
+</div>
