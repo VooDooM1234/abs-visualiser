@@ -17,21 +17,27 @@
   <hr />
   <ul class="nav nav-pills flex-column mb-auto">
     <li class="nav-item">
-      <a href="/" class="nav-link active" aria-current="page">
+            <a
+        href="/home"
+        class="nav-link link-dark"s
+        hx-get="/home"
+        hx-target="#main-content"
+        hx-swap="innerHTML"
+      >
         <i class="bi bi-house-door-fill me-2"></i>
         Home
       </a>
     </li>
     <li>
       <a
-        href="/plot/bar-abs-cpi/"
+        href="/dashboard"
         class="nav-link link-dark"
-        hx-get="/plot/bar-abs-cpi/"
-        hx-target="#plot-bar-abs-cpi"
+        hx-get="/dashboard"
+        hx-target="#main-content"
         hx-swap="innerHTML"
       >
         <i class="bi bi-bar-chart-fill me-2"></i>
-        Consumer Price Index (CPI)
+        Dashboard
       </a>
     </li>
     <li>
@@ -40,7 +46,7 @@
         class="nav-link link-dark"
         hx-get="/plot/test/"
         hx-target="#plot-test"
-        hx-swap="innerHTML"
+        hx-swap="outerHTML"
       >
         <i class="bi bi-graph-up-arrow me-2"></i>
         Something Else

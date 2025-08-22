@@ -15,8 +15,10 @@ func AddRoutes(
 	cfg *config.Config,
 	db *db.Database,
 ) {
-	mux.Handle("/", handlers.HomePageHandler(cfg, logger))
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	mux.Handle("/", handlers.IndexHandler(cfg, logger))
+	mux.Handle("/dashboard", handlers.DashboardHandler(cfg, logger))
+	mux.Handle("/home", handlers.HomeHandler(cfg, logger))
 
 	mux.Handle("/sidebar", handlers.SidebarHandler(cfg, logger))
 	mux.Handle("/abs_dataflow/", handlers.ABSDataflowHandler(cfg, logger, db))

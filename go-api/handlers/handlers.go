@@ -69,7 +69,7 @@ func SidebarHandler(config *config.Config, logger *log.Logger) http.Handler {
 	})
 }
 
-func HomePageHandler(config *config.Config, logger *log.Logger) http.Handler {
+func IndexHandler(config *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		path := config.HTMLTemplates + "index.html"
@@ -79,6 +79,33 @@ func HomePageHandler(config *config.Config, logger *log.Logger) http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		log.Print("Home Page")
+	})
+}
+
+func HomeHandler(config *config.Config, logger *log.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		path := config.HTMLTemplates + "home.html"
+		tmpl := template.Must(template.ParseFiles(path))
+
+		if err := tmpl.Execute(w, nil); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		log.Print("Home Page")
+	})
+}
+
+func DashboardHandler(cfg *config.Config, logger *log.Logger) http.Handler {
+	path := cfg.HTMLTemplates + "dashboard.html"
+	tmpl := template.Must(template.ParseFiles(path))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		if err := tmpl.Execute(w, nil); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			logger.Printf("Error executing dashboard template: %v", err)
+		}
+		log.Println("Dashboard Page")
 	})
 }
 
