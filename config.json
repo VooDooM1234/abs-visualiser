@@ -2,6 +2,7 @@
   "python_path": ".venv/Scripts/python.exe",
   "host": "127.0.0.1",
   "port": "8081",
+  "plot_service_host": "127.0.0.1",
   "plot_service_port": "8082",
   "plot_service_script": "python_ds.app:app",
   "HTMLTemplates": "templates/html/"

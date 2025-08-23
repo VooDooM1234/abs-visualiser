@@ -18,6 +18,7 @@ type Config struct {
 	PythonPath        string `json:"python_path"`
 	DefaultChart      string `json:"default_chart"`
 	DataSource        string `json:"data_source"`
+	PlotServiceHost   string `json:"plot_service_host"`
 	PlotServicePort   string `json:"plot_service_port"`
 	PlotServiceScript string `json:"plot_service_script"`
 	Host              string `json:"host"`
