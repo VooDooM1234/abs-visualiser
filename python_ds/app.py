@@ -12,11 +12,15 @@ import logging
 from .config import load_config
 import json
 from pydantic import BaseModel
-import pandasdmx as sdmx
+from . import sdmx_handler
+import requests
+
 
 app = FastAPI()
 db_conn = init_db(load_config())
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("uvicorn.error")
+
 
 def bar_plot(df):
     return px.bar(df, x="timePeriod", y="value", title="Bar Chart")
@@ -133,6 +137,54 @@ async def get_dashboard(dataflowid: str, dashboardRequest: DashboardRequest):
     except Exception as e:
         logger.error(f"Error generating dashboard for dataflowid {dataflowid}: {e}")    
         return HTMLResponse(content=f"Error</h3>", status_code=500)
+
+class requestDataABS(BaseModel):
+    dataflowid: str
+
+# Fix the merging of the codelist to give real names
+# fix payload so onle period and value is repeated, keep others as metadata
+@app.post("/request-data/ABS/", response_class=JSONResponse)
+async def get_data_abs(payload: requestDataABS):
+    try:
+        dataflowid = payload.dataflowid
+        logger.info(f"POST request for ABS data received: {dataflowid}")
+       
+        df = sdmx_handler.get_data(dataflowid)
+        # codelist = sdmx_handler.get_codelists(dataflowid)
+        
+        # df = pd.merge(df, codelist, on='INDEX').query("INDEX != ''")    
+        
+        df_flat = df.reset_index()
+        content = df_flat.to_dict(orient="records")  
+        
+        return JSONResponse(content=content)
+    except ValueError as e:
+        error_payload = {
+            "error": "requestDataFailed",
+            "message": str(e),
+        }
+        return JSONResponse(content=error_payload)
+    
+class requestCodelistABS(BaseModel):
+    dataflowid: str    
+    
+@app.post("/request-codelist/ABS/", response_class=JSONResponse)
+async def get_data_abs(payload: requestCodelistABS):
+    try:
+        dataflowid = payload.dataflowid
+        logger.info(f"POST request for ABS data received: {dataflowid}")
+        codelists = sdmx_handler.get_codelists(dataflowid)
+        
+        
+        return JSONResponse(codelists)
+    except ValueError as e:
+        error_payload = {
+            "error": "requestDataCodelist",
+            "message": str(e),
+        }
+        return JSONResponse(error_payload)
+    
+    
 
 
 # for isolation testing, run with:

@@ -21,7 +21,7 @@ import (
 //     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 //         // handler logic
 //     })
-// }s
+// }
 
 func validateGraphName(name string) error {
 	var allowedGraphs = map[string]bool{
@@ -136,7 +136,83 @@ func ABSDataflowHandler(config *config.Config, logger *log.Logger, db *db.Databa
 	})
 }
 
+// Get request to python data science to request ABS data
+// for raw data expertimentation - will be made redundent by a direct call for a dashboard request.
+func RequestABSData(config *config.Config, logger *log.Logger) http.Handler {
+	type ABSresponse struct {
+		MEASURE     string  `json:"MEASURE"`
+		INDEX       string  `json:"INDEX"`
+		TSEST       string  `json:"TSEST"`
+		REGION      string  `json:"REGION"`
+		FREQ        string  `json:"FREQ"`
+		TIME_PERIOD string  `json:"TIME_PERIOD"`
+		Value       float64 `json:"VALUE"`
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		dataflowid := r.URL.Query().Get("dataflowid")
+		if dataflowid == "" {
+			http.Error(w, "Missing dataflowid parameter", http.StatusBadRequest)
+			return
+		}
+
+		var payload = map[string]string{
+			"dataflowid": dataflowid,
+		}
+
+		jsonPayload, err := json.Marshal(payload)
+		if err != nil {
+			logger.Printf("Failed to marshal payload: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		logger.Printf("Retrieving dashboard for dataflow: %s", dataflowid)
+		microserviceurl := fmt.Sprintf("http://%s:%s/request-data/ABS/", config.PlotServiceHost, config.PlotServicePort)
+		logger.Printf("POST request to: %s", microserviceurl)
+		req, err := http.NewRequest("POST", microserviceurl, bytes.NewBuffer(jsonPayload))
+		if err != nil {
+			logger.Printf("Failed to create POST request: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: 120 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			logger.Printf("Python service unavailable: %v", err)
+			http.Error(w, "Python service unavailable", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			logger.Printf("Error reading response body: %v", err)
+			http.Error(w, "Failed to read response", http.StatusInternalServerError)
+			return
+		}
+
+		var result []ABSresponse
+		if err := json.Unmarshal(body, &result); err != nil {
+			log.Printf("Failed to parse JSON: %v", err)
+			http.Error(w, "Invalid response format", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(result); err != nil {
+			logger.Printf("Failed to write response: %v", err)
+			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("ABS Data successful retrieved")
+	})
+}
+
 // Plothandler endpoint /plot/{graphName}/{dataflow}
+// change to use querty param nor endpoint
 func PlotHandler(config *config.Config, logger *log.Logger, db *db.Database) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

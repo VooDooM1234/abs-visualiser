@@ -24,6 +24,8 @@ func AddRoutes(
 	mux.Handle("/abs_dataflow/", handlers.ABSDataflowHandler(cfg, logger, db))
 	//helper routes
 	mux.Handle("/health", handlers.HealthHandler(cfg, logger))
+
+	mux.Handle("/request-data/ABS/", handlers.RequestABSData(cfg, logger))
 	//plotting routes
 	mux.Handle("/dashboard-retrieve/", handlers.RetrieveDashboardHandler(cfg, logger))
 	mux.Handle("/plot/dashboard/", handlers.PlotDashboardHandler(cfg, logger, db))
