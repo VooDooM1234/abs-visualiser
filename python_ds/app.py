@@ -12,6 +12,7 @@ import logging
 from .config import load_config
 import json
 from pydantic import BaseModel
+import pandasdmx as sdmx
 
 app = FastAPI()
 db_conn = init_db(load_config())
@@ -41,6 +42,7 @@ def dataflow_to_query(dataflow):
     query = f"SELECT * FROM {dataflow}"
     df = pd.read_sql(query, db_conn)
     df['value'] = pd.to_numeric(df['value'], errors='coerce').round(2).astype(float)
+    df = df.rename(columns={"time_period": "timePeriod", "value": "value"})
     return df
 
 
