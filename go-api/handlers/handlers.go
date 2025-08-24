@@ -260,7 +260,7 @@ func PlotHandler(config *config.Config, logger *log.Logger, db *db.Database) htt
 // to generate the dashboard for the dataflow (ABS name for data ids)
 // Endpoint: /dashboard-retrieve/
 // Python microservice returns HTML for the dashboard
-func RetrieveDashboardHandler(config *config.Config, logger *log.Logger) http.Handler {
+func RequestDashboardHandler(config *config.Config, logger *log.Logger) http.Handler {
 
 	type Observation struct {
 		TimePeriod string  `json:"period"`
@@ -424,25 +424,16 @@ func RetrieveDashboardHandler(config *config.Config, logger *log.Logger) http.Ha
 	})
 }
 
-// Python Microservice handler for dashboard plots
-// Endpoint: /plot/dashboard/{dataflow}
-func PlotDashboardHandler(config *config.Config, logger *log.Logger, db *db.Database) http.Handler {
+type RefreshDashboardResponse struct {
+	Status string `json:"status"`
+	// DataflowID string `json:"dataflowid"`
+	// Timestamp  string `json:"timestamp"`
+}
+
+func RefreshDashboardhandler(config *config.Config, logger *log.Logger, db *db.Database) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-
-		dataflowid := r.URL.Query().Get("dataflowid")
-		if dataflowid == "" {
-			http.Error(w, "Missing dataflowid parameter", http.StatusBadRequest)
-			return
-		}
-
-		if err := validateDataflowName(dataflowid, *db); err != nil {
-			http.Error(w, fmt.Sprintf("Invalid dataflow name: %s", dataflowid), http.StatusBadRequest)
-			logger.Printf("Invalid dataflow name: %s", dataflowid)
-			logger.Printf("Dataflow validation failed: %v", err)
-			return
-		}
-
+		dataflowid := "CPI"
 		var payload = map[string]string{
 			"dataflowid": dataflowid,
 		}
@@ -456,7 +447,7 @@ func PlotDashboardHandler(config *config.Config, logger *log.Logger, db *db.Data
 
 		logger.Printf("Retrieving data for dataflow: %s...", dataflowid)
 
-		url := fmt.Sprintf("http://%s:%s/dashboard/", config.Host, config.PlotServicePort)
+		url := fmt.Sprintf("http://%s:%s/refresh-dashboard/", config.Host, config.PlotServicePort)
 		logger.Printf("POST request to: %s", url)
 		// trying different method of posting rather then http.NewRequest and a DO method like most articles seem to say idk why they dont use this when is seems easier?
 		resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
@@ -466,9 +457,20 @@ func PlotDashboardHandler(config *config.Config, logger *log.Logger, db *db.Data
 		}
 		defer resp.Body.Close()
 
-		htmlBytes, _ := io.ReadAll(resp.Body)
-		htmlString := string(htmlBytes)
-		fmt.Fprint(w, htmlString)
+		var result RefreshDashboardResponse
+		if err := json.Unmarshal(body, &result); err != nil {
+			log.Printf("Failed to parse JSON: %v", err)
+			http.Error(w, "Invalid response format", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(result); err != nil {
+			logger.Printf("Failed to write response: %v", err)
+			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+			return
+		}
+
 	})
 }
 

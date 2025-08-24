@@ -17,14 +17,15 @@ from yaspin import yaspin
 from plotapp.db import init_db
 from plotapp.config import load_config
 from plotapp import fetch_ABS_SDMX as fsdmx
-from plotapp.dashapp import create_dash_app
+
 import uvicorn
+from plotapp.dashapp import app as dash_app, dashboard_data
+# from plotapp.dashapp import create_dashboard
 
 app = FastAPI()
 db_conn = init_db(load_config())
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("uvicorn.error")
-
 
 def bar_plot(df):
     return px.bar(df, x="timePeriod", y="value", title="Bar Chart")
@@ -69,26 +70,25 @@ async def put_plot_metadata_valid_graphs():
     valid_graphs = list(graphRegistry.keys())
     return JSONResponse(content={"valid_graphs": valid_graphs}, status_code=200)
 
-@app.post("/dashboard/", response_class=HTMLResponse)
-async def get_plot_dashboard(dataflowid: str = "CPI", ):
+# This is being mounted now so i dont think I need??
+class updateDashboardRequest(BaseModel):
+    dataflowid: str
+
+@app.post("/refresh-dashboard/", response_class=JSONResponse)
+async def get_plot_dashboard(payload: updateDashboardRequest):
     try:
-        logger.info(f"POST request for ABS dashboard received: {dataflowid}")
-        df = fsdmx.get_data(dataflowid)
-        # df_flat = df.reset_index()
-        # content = df_flat.to_dict(orient="records")  
         with yaspin(text=f"Fetching data for ID: {id} — Might take a while... good luck :)", color="cyan") as spinner:
-            logger.info(f"Creating dashboard for : {dataflowid}")
-            
-            
-
-
+            logger.info(f"POST request for ABS dashboard received: {payload.dataflowid}")
+            df = fsdmx.get_data(payload.dataflowid) 
+            logger.info(f"Dashboard data updated for: {payload.dataflowid}")
+            dashboard_data["df"] = df 
+            print(f"[POST] Updated dashboard_data df shape: {df.shape}, empty: {df.empty}")
             spinner.ok("✅")
+        return JSONResponse(content={"status": "success"})
         
-        
-
-        return HTMLResponse(content=content)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Dashboard generation failed: {str(e)}")
+        # raise HTTPException(status_code=500, detail=f"Dashboard generation failed: {str(e)}")
+        return JSONResponse(content={"status": "fail"})
 
 @app.get("/plot/{graphName}/{dataflow}", response_class=HTMLResponse)
 async def get_abs_cpi_plot(graphName: str, dataflow: str):
@@ -182,9 +182,9 @@ async def get_data_abs(payload: requestCodelistABS):
         raise HTTPException(status_code=400, detail=f"requestDataCodelist: {str(e)}")
     
     
-dash_app = create_dash_app(requests_pathname_prefix="/dash/")
-dash_app.enable_dev_tools()
-app.mount("/dash", WSGIMiddleware(dash_app.server))
+# dash_app = create_dashboard(requests_pathname_prefix="/dashboard/")
+# dash_app.enable_dev_tools()
+app.mount("/dashboard", WSGIMiddleware(dash_app.server))
 
 
 if __name__ == "__main__":
