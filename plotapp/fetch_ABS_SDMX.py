@@ -3,6 +3,7 @@ import pandasdmx as sdmx
 import pandas as pd
 from io import BytesIO
 from urllib.parse import urlencode
+from yaspin import yaspin
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -33,37 +34,40 @@ def get_dataflow():
 def get_data(id: str, datakey: str = None, timeout: int = 300):
     abs = sdmx.Request('ABS_XML', timeout=timeout)
     try:
-        logging.info(f"Fetching data for ID: {id} - Might take a while... good luck :)")
+        with yaspin(text=f"Fetching data for ID: {id} — Might take a while... good luck :)", color="cyan") as spinner:
+            logging.info(f"Fetching data for ID: {id} — Might take a while... good luck :)")
+    
         # data_msg = abs_xml.data(resource_id=id, force=True)
         
-        params={
-            'format':'jsondata',
-            'detail': 'dataonly'
-        }
-        
-        # startPeriod = 2000
-        # endPeriod = 2025
-        
-        # if startPeriod:
-        #     params['startPeriod'] = endPeriod
-        # if endPeriod:
-        #     params['endPeriod'] = endPeriod
-        
-        if datakey is None:
-            # default to CPI one for now - fix when adding dynamic logic
-            datakey = "1.10001...Q"
+            params={
+                'format':'jsondata',
+                'detail': 'dataonly'
+            }
             
-        id = f"{id}/{datakey}"
-        
+            # startPeriod = 2000
+            # endPeriod = 2025
+            
+            # if startPeriod:
+            #     params['startPeriod'] = endPeriod
+            # if endPeriod:
+            #     params['endPeriod'] = endPeriod
+            
+            if datakey is None:
+                # default to CPI one for now - fix when adding dynamic logic
+                datakey = "1.10001...Q"
+                
+            id = f"{id}/{datakey}"
+            
 
-        # I have no idea why params arent working and I have spent to long on this they dont matter to much for us anyway
-        msg = abs.get(
-            resource_type='data',
-            resource_id=id,
-            # params=params,
-            force=True
-        )
-
+            # I have no idea why params arent working and I have spent to long on this they dont matter to much for us anyway
+            msg = abs.get(
+                resource_type='data',
+                resource_id=id,
+                # params=params,
+                force=True
+            )
+            spinner.ok("✅ ")
+            
         df = sdmx.to_pandas(msg.data)
         print(df.head())
         if df.empty:
@@ -109,9 +113,9 @@ def get_codelists(dataflow_id):
 # print("Available dataflows (first 10):")
 # print(dataflows.head(10))
 
-df = get_data('CPI')
-print("Sample data (first 5 rows):")
-print(df.head(5))
+# df = get_data('CPI')
+# print("Sample data (first 5 rows):")
+# print(df.head(5))
 
 # df.to_csv('../.testdata/ABORIGINAL_ID_POP_PROJ.csv')
 

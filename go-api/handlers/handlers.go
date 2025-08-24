@@ -430,32 +430,42 @@ func PlotDashboardHandler(config *config.Config, logger *log.Logger, db *db.Data
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		urlParts := strings.Split(r.URL.Path, "/")
-		pathMap := make(map[string]string)
-		if len(urlParts) > 1 {
-			pathMap["base"] = urlParts[1]
-		}
-		if len(urlParts) > 3 {
-			pathMap["dataflow"] = urlParts[2]
+		dataflowid := r.URL.Query().Get("dataflowid")
+		if dataflowid == "" {
+			http.Error(w, "Missing dataflowid parameter", http.StatusBadRequest)
+			return
 		}
 
-		dataflow := strings.ToUpper(pathMap["dataflow"])
-		if err := validateDataflowName(dataflow, *db); err != nil {
-			http.Error(w, fmt.Sprintf("Invalid dataflow name: %s", dataflow), http.StatusBadRequest)
-			logger.Printf("Invalid dataflow name: %s", dataflow)
+		if err := validateDataflowName(dataflowid, *db); err != nil {
+			http.Error(w, fmt.Sprintf("Invalid dataflow name: %s", dataflowid), http.StatusBadRequest)
+			logger.Printf("Invalid dataflow name: %s", dataflowid)
 			logger.Printf("Dataflow validation failed: %v", err)
 			return
 		}
 
-		url := fmt.Sprintf("http://%s:%s/plot/dashboard/%s", config.Host, config.PlotServicePort, pathMap["dataflow"])
-		resp, err := http.Get(url)
+		var payload = map[string]string{
+			"dataflowid": dataflowid,
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			logger.Printf("Failed to marshal payload: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		logger.Printf("Retrieving data for dataflow: %s...", dataflowid)
+
+		url := fmt.Sprintf("http://%s:%s/dashboard/", config.Host, config.PlotServicePort)
+		logger.Printf("POST request to: %s", url)
+		// trying different method of posting rather then http.NewRequest and a DO method like most articles seem to say idk why they dont use this when is seems easier?
+		resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			http.Error(w, "Python service unavailable", http.StatusBadGateway)
 			return
 		}
 		defer resp.Body.Close()
 
-		defer resp.Body.Close()
 		htmlBytes, _ := io.ReadAll(resp.Body)
 		htmlString := string(htmlBytes)
 		fmt.Fprint(w, htmlString)

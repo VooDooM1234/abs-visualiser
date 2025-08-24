@@ -1,9 +1,13 @@
 import os
 from dotenv import load_dotenv
 from urllib.parse import urlparse
+import logging
 
 def load_config():
     load_dotenv()
+    
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger("uvicorn.error")
 
     db_url = os.getenv("DATABASE_URL")
 

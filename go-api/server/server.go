@@ -32,14 +32,17 @@ func NewServer(
 }
 
 func launchPythonMicroservice(config *config.Config) {
-	//.\.venv\Scripts\python.exe -m uvicorn python_ds.app:app --host 127.0.0.1 --port 8081
 	cmd := exec.Command(
 		config.PythonPath,
 		"-m", "uvicorn",
-		config.PlotServiceScript,
-		"--host", config.Host,
+		"plotapp.main:app",
+		"--host", config.PlotServiceHost,
 		"--port", config.PlotServicePort,
-		"--app-dir", "..",
+	)
+
+	cmd.Env = append(os.Environ(),
+		"PLOT_SERVICE_HOST="+config.PlotServiceHost,
+		"PLOT_SERVICE_PORT="+config.PlotServicePort,
 	)
 
 	cmd.Stdout = os.Stdout
@@ -50,17 +53,15 @@ func launchPythonMicroservice(config *config.Config) {
 		log.Fatalf("Failed to launch Python microservice: %v", err)
 	}
 
-	log.Printf("Python microservice running at http://%s:%s\n", config.Host, config.PlotServicePort)
+	log.Printf("Python microservice running at http://%s:%s\n", config.PlotServiceHost, config.PlotServicePort)
 }
 
 // STOP STEALIN MY PORTS
 func killPort(port string) error {
-	// PowerShell command to get PID and kill it
-	psCommand := fmt.Sprintf(`
-$connections = Get-NetTCPConnection -LocalPort %s -ErrorAction SilentlyContinue;
-foreach ($c in $connections) {
-    Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue
-}`, port)
+	psCommand := fmt.Sprintf(`$connections = Get-NetTCPConnection -LocalPort %s -ErrorAction SilentlyContinue;
+		foreach ($c in $connections) {
+			Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue
+		}`, port)
 
 	cmd := exec.Command("powershell", "-Command", psCommand)
 	cmd.Stdout = os.Stdout
