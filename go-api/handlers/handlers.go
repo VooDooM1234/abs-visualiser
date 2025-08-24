@@ -167,7 +167,7 @@ func RequestABSData(config *config.Config, logger *log.Logger) http.Handler {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		logger.Printf("Retrieving dashboard for dataflow: %s", dataflowid)
+		logger.Printf("Retrieving data for dataflow: %s...", dataflowid)
 		microserviceurl := fmt.Sprintf("http://%s:%s/request-data/ABS/", config.PlotServiceHost, config.PlotServicePort)
 		logger.Printf("POST request to: %s", microserviceurl)
 		req, err := http.NewRequest("POST", microserviceurl, bytes.NewBuffer(jsonPayload))
@@ -206,8 +206,7 @@ func RequestABSData(config *config.Config, logger *log.Logger) http.Handler {
 			http.Error(w, "Failed to write response", http.StatusInternalServerError)
 			return
 		}
-
-		log.Printf("ABS Data successful retrieved")
+		logger.Printf("Successfully retrieved data for dataflow: %s", dataflowid)
 	})
 }
 
