@@ -109,9 +109,11 @@ def get_codelists(dataflow_id):
     frequecyCodelist = {k: v for k, v in codelists.items() if "FREQ" in k}
     
     
-# dataflows = get_dataflow()
-# print("Available dataflows (first 10):")
-# print(dataflows.head(10))
+dataflows = get_dataflow()
+contents = dataflows.reset_index().to_dict(orient="records")
+
+print("Available dataflows (first 10):")
+print(dataflows.head(10))
 
 # df = get_data('CPI')
 # print("Sample data (first 5 rows):")
@@ -119,9 +121,9 @@ def get_codelists(dataflow_id):
 
 # df.to_csv('../.testdata/ABORIGINAL_ID_POP_PROJ.csv')
 
-# df_dsd = get_dsd('CPI')
-# print("Data Structure Definition (DSD):")
-# print(df_dsd.head(5))
+df_dsd = get_dsd('CPI')
+print("Data Structure Definition (DSD):")
+print(df_dsd.head(5))
 
 # codelists = get_codelists('CPI')
 

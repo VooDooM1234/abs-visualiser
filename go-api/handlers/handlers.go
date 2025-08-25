@@ -25,6 +25,51 @@ import (
 //     })
 // }
 
+type DataflowABS struct {
+	// Status       string `json:"status"`
+	DataflowID   string `json:"dataflowid"`
+	DataflowName string `json:"dataflowname"`
+}
+
+// seperate the fetching and handling
+func RequestDataflowABS(config *config.Config, logger *log.Logger) http.Handler {
+	path := config.HTMLTemplates + "dataflow_contents.html"
+	tmpl := template.Must(template.ParseFiles(path))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		url := fmt.Sprintf("http://%s:%s/request-dataflow/ABS/", config.Host, config.PlotServicePort)
+		logger.Printf("GET request to: %s", url)
+		resp, err := http.Get(url)
+		if err != nil {
+			http.Error(w, "Python service unavailable", http.StatusBadGateway)
+			logger.Printf("Failed to GET ABS dataflows: %v", err)
+			return
+		}
+
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			logger.Printf("Error reading response body: %v", err)
+			http.Error(w, "Failed to read response", http.StatusInternalServerError)
+			return
+		}
+
+		var result []DataflowABS
+		if err := json.Unmarshal(body, &result); err != nil {
+			log.Printf("Failed to parse JSON: %v", err)
+			http.Error(w, "Invalid response format", http.StatusInternalServerError)
+			return
+		}
+		// move the serviering to a handler func
+		if err := tmpl.Execute(w, result); err != nil {
+			http.Error(w, "Failed to render template", http.StatusInternalServerError)
+			logger.Printf("Template execution error: %v", err)
+			return
+		}
+
+	})
+}
+
 func validateGraphName(name string) error {
 	var allowedGraphs = map[string]bool{
 		"line":    true,
@@ -108,7 +153,13 @@ func DashboardHandler(cfg *config.Config, logger *log.Logger) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		if err := tmpl.Execute(w, nil); err != nil {
+
+		dataflowid := r.URL.Query().Get("dataflowid")
+		if dataflowid == "" {
+			dataflowid = "CPI"
+		}
+
+		if err := tmpl.Execute(w, dataflowid); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			logger.Printf("Error executing dashboard template: %v", err)
 		}
@@ -118,37 +169,28 @@ func DashboardHandler(cfg *config.Config, logger *log.Logger) http.Handler {
 
 // Reverse proxy for Ploty Dash (Python mservice)
 func ReverseProxyDashHandler(cfg *config.Config, logger *log.Logger) http.Handler {
-	target, err := url.Parse(fmt.Sprintf("http://%s:%s", cfg.PlotServiceHost, cfg.PlotServicePort))
-	if err != nil {
-		logger.Printf("Dash Reverse Proxy parse error: %v", err)
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "bad upstream", http.StatusInternalServerError)
-		})
-	}
-
-	proxy := httputil.NewSingleHostReverseProxy(target)
-	return proxy
-}
-
-func ABSDataflowHandler(config *config.Config, logger *log.Logger, db *db.Database) http.Handler {
-	path := config.HTMLTemplates + "abs_dataflow.html"
-	tmpl := template.Must(template.ParseFiles(path))
-	query := "SELECT id, version, agency_id, is_external_reference, is_final, name FROM abs_static_dataflow"
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, err := db.GetABSDataflow(query)
+		target, err := url.Parse(fmt.Sprintf("http://%s:%s", cfg.PlotServiceHost, cfg.PlotServicePort))
 		if err != nil {
-			logger.Printf("Error fetching ABS dataflow: %v", err)
+			logger.Printf("Dash Reverse Proxy parse error: %v", err)
+			http.Error(w, "bad upstream", http.StatusInternalServerError)
 			return
 		}
 
-		w.Header().Set("Content-Type", "text/html")
-		if err := tmpl.Execute(w, data); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			logger.Printf("Error executing template: %v", err)
-			return
+		proxy := httputil.NewSingleHostReverseProxy(target)
+		// allow iframe serving for dashboard
+		proxy.ModifyResponse = func(res *http.Response) error {
+			res.Header.Del("X-Frame-Options")
+			res.Header.Del("Content-Security-Policy")
+			return nil
 		}
-		logger.Print("ABS Dataflow Page")
+
+		proxy.ErrorHandler = func(rw http.ResponseWriter, req *http.Request, err error) {
+			logger.Printf("Proxy error: %v", err)
+			http.Error(rw, "Upstream unavailable", http.StatusBadGateway)
+		}
+
+		proxy.ServeHTTP(w, r)
 	})
 }
 

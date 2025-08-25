@@ -1,14 +1,12 @@
  <!-- ABS Dataflow Table -->
         <h5 id="title-table" class="text-center mb-4">ABS Available Data</h5>
-        <div hx-get="/abs_dataflow/" hx-trigger="load" hx-target="#table_abs_dataflow" hx-swap="innerHTML"></div>
+        <div hx-get="/dataflow/ABS/" hx-trigger="load" hx-target="#table_abs_dataflow" hx-swap="innerHTML"></div>
 
         <table id="abs-dataflow-table" class="table table-striped">
           <thead>
             <tr>
               <th>ID</th>
               <th>Name</th>
-              <th>Version</th>
-              <th>Agency ID</th>
               <th>View Data</th>
             </tr>
           </thead>

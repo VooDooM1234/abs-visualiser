@@ -1,15 +1,13 @@
 {{range .}}
 <tr>
-  <td>{{.ID}}</td>
-  <td>{{.Name}}</td>
-  <td>{{.Version}}</td>
-  <td>{{.AgencyID}}</td>
+  <td>{{.DataflowID}}</td>
+  <td>{{.DataflowName}}</td>
   <td>
     <button
       class="btn btn-success"
       type="button"
       hx-post="/dashboard-retrieve/"
-      hx-vals='{"dataflowId": "{{.ID}}"}'
+      hx-vals='{"dataflowId": "{{.DataflowID}}"}'
     >
       View Dashboard
     </button>

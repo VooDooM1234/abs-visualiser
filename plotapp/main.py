@@ -19,7 +19,7 @@ from plotapp.config import load_config
 from plotapp import fetch_ABS_SDMX as fsdmx
 
 import uvicorn
-from plotapp.dashapp import app as dash_app, dashboard_data
+from plotapp.dashapp import app as dash_app
 # from plotapp.dashapp import create_dashboard
 
 app = FastAPI()
@@ -70,6 +70,8 @@ async def put_plot_metadata_valid_graphs():
     valid_graphs = list(graphRegistry.keys())
     return JSONResponse(content={"valid_graphs": valid_graphs}, status_code=200)
 
+
+
 # This is being mounted now so i dont think I need??
 class updateDashboardRequest(BaseModel):
     dataflowid: str
@@ -81,11 +83,9 @@ async def get_plot_dashboard(payload: updateDashboardRequest):
             logger.info(f"POST request for ABS dashboard received: {payload.dataflowid}")
             df = fsdmx.get_data(payload.dataflowid) 
             logger.info(f"Dashboard data updated for: {payload.dataflowid}")
-            dashboard_data["df"] = df 
             print(f"[POST] Updated dashboard_data df shape: {df.shape}, empty: {df.empty}")
             spinner.ok("✅")
         return JSONResponse(content={"status": "success"})
-        
     except Exception as e:
         # raise HTTPException(status_code=500, detail=f"Dashboard generation failed: {str(e)}")
         return JSONResponse(content={"status": "fail"})
@@ -153,6 +153,28 @@ class DashboardRequest(BaseModel):
 #         logger.error(f"Error generating dashboard for dataflowid {dataflowid}: {e}")    
 #         raise HTTPException(status_code=500, detail=f"Error generating dashboard: {str(e)}")
 
+@app.get("/request-dataflow/ABS/", response_class=JSONResponse)
+async def get_dataflow_all():
+    try:
+        with yaspin(text="Fetching dataflows for ABS", color="cyan") as spinner:
+            logger.info("GET request for ABS dataflow")
+            
+            df = fsdmx.get_dataflow()
+            df_flat = df.reset_index()
+            df_flat.rename(columns={
+                df_flat.columns[0]: "dataflowid",
+                df_flat.columns[1]: "dataflowname"
+            }, inplace=True)
+            
+            df_dict = df_flat.to_dict("records")
+            logger.debug(json.dumps(df_dict, indent=4))
+            spinner.ok("✅")
+
+        return JSONResponse(content=df_dict)
+    
+    except Exception as e:
+        logger.error(f"Failed to fetch dataflow: {e}")
+        return JSONResponse(content={"status": "failed"})
 class requestDataABS(BaseModel):
     dataflowid: str
 
@@ -170,6 +192,7 @@ async def get_data_abs(payload: requestDataABS):
 
 class requestCodelistABS(BaseModel):
     dataflowid: str    
+
     
 @app.post("/request-codelist/ABS/", response_class=JSONResponse)
 async def get_data_abs(payload: requestCodelistABS):
@@ -177,7 +200,9 @@ async def get_data_abs(payload: requestCodelistABS):
         dataflowid = payload.dataflowid
         logger.info(f"POST request for ABS data received: {dataflowid}")
         codelists = fsdmx.get_codelists(dataflowid)
-        return JSONResponse(codelists)
+        records = codelists.reset_index().to_dict(orient="records")
+
+        return JSONResponse(records)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"requestDataCodelist: {str(e)}")
     
