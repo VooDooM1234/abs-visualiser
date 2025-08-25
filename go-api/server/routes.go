@@ -34,4 +34,7 @@ func AddRoutes(
 	mux.Handle("/plot/test/", handlers.PlotTestHandler(cfg, logger))
 	mux.Handle("/plot/test/json/", handlers.PlotTestJSONHandler(cfg, logger))
 
+	// reverse proxy
+	mux.Handle("/dashboard/", handlers.ReverseProxyDashHandler(cfg, logger))
+
 }

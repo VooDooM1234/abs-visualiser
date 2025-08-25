@@ -28,6 +28,7 @@ func NewServer(
 
 	var handler http.Handler = mux
 	// wrap middlewares here if you want
+
 	return handler
 }
 
@@ -57,7 +58,7 @@ func launchPythonMicroservice(config *config.Config) {
 }
 
 // STOP STEALIN MY PORTS
-func killPort(port string) error {
+func KillPort(port string) error {
 	psCommand := fmt.Sprintf(`$connections = Get-NetTCPConnection -LocalPort %s -ErrorAction SilentlyContinue;
 		foreach ($c in $connections) {
 			Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue
@@ -91,6 +92,7 @@ func Run(ctx context.Context, w io.Writer, args []string) error {
 		config,
 		databaseConnect,
 	)
+
 	httpServer := &http.Server{
 		Addr:    net.JoinHostPort(config.Host, config.Port),
 		Handler: srv,
@@ -103,8 +105,8 @@ func Run(ctx context.Context, w io.Writer, args []string) error {
 	// 	return err
 	// }
 
-	killPort(config.PlotServicePort)
-	killPort(config.Port)
+	KillPort(config.PlotServicePort)
+	KillPort(config.Port)
 	launchPythonMicroservice(config)
 
 	go func() {

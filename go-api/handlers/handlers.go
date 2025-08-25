@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -17,7 +19,7 @@ import (
 )
 
 // https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/#maker-funcs-return-the-handler
-// func handleSomething(config *config.Config, logger *Logger) http.Handler {
+// func handleSomething(config *config.Config, logger *log.Logger) http.Handler {
 //     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 //         // handler logic
 //     })
@@ -112,6 +114,20 @@ func DashboardHandler(cfg *config.Config, logger *log.Logger) http.Handler {
 		}
 		log.Println("Dashboard Page")
 	})
+}
+
+// Reverse proxy for Ploty Dash (Python mservice)
+func ReverseProxyDashHandler(cfg *config.Config, logger *log.Logger) http.Handler {
+	target, err := url.Parse(fmt.Sprintf("http://%s:%s", cfg.PlotServiceHost, cfg.PlotServicePort))
+	if err != nil {
+		logger.Printf("Dash Reverse Proxy parse error: %v", err)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "bad upstream", http.StatusInternalServerError)
+		})
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	return proxy
 }
 
 func ABSDataflowHandler(config *config.Config, logger *log.Logger, db *db.Database) http.Handler {

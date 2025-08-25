@@ -187,5 +187,5 @@ async def get_data_abs(payload: requestCodelistABS):
 app.mount("/dashboard", WSGIMiddleware(dash_app.server))
 
 
-if __name__ == "__main__":
-    uvicorn.run(app, port=8000)
+# if __name__ == "__main__":
+#     uvicorn.run(app, port=8000)
