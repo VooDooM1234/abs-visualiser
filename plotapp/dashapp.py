@@ -3,17 +3,19 @@ from dash import html, dcc, dash_table
 from dash.dependencies import Input, Output
 from flask import Flask, request, jsonify
 from urllib.parse import parse_qs
+from plotapp.config import load_config
 
 import flask
 import pandas as pd
 import os
-import plotly as px
+import plotly.express as px
 import logging
 
 from plotapp import fetch_ABS_SDMX as fsdmx
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("uvicorn.error")
+config = load_config()
 
 # CHNGE TO NOT BE GLOBAL THINGO BUT SQLITE
 SDMX_DATA = {}
@@ -43,10 +45,11 @@ app.layout = html.Div([
     Input("url", "search")
 )
 def load_data_from_url(search):
-    params = parse_qs(search[1:] if search else "")
-    datatype = params.get("datatype", ["default"])[0]
-    records = SDMX_DATA.get(datatype, [])
-    return {"datatype": datatype, "records": records}
+    dataflowid = request.args.get('dataflowid')
+    if dataflowid is None:
+        logger.error("No query param passed")
+    records = SDMX_DATA.get(dataflowid, [])
+    return {"dataflowid": dataflowid, "records": records}
 
 @app.callback(
     Output("data-table", "data"),
@@ -55,26 +58,19 @@ def load_data_from_url(search):
 def update_table(store_data):
     return store_data.get("records", [])
 
-# Callback to automatically update the table from global dashboard_data
-# @app.callback(
-#     Output("data-table", "data"),
-#     Input("interval", "n_intervals")
-# )
-# def update_table(n):
-#     df = dashboard_data["df"]
-#     print(f"[Interval {n}] Dashboard df shape: {df.shape}, empty: {df.empty}")
-#     if df.empty:
-#         return []
-#     return df.reset_index().to_dict("records")
-
 @server.route("/refresh-dashboard/", methods=['POST'])
 def update_data():
-    data = request.json
+    # dataflowid = request.form.get('dataflowid')
+    data = request.get_json()
+    if not data or "dataflowid" not in data:
+        return jsonify({"status": "error", "message": "Missing dataflowid"}), 400
+    
     dataflowid = data["dataflowid"]
     logger.info(f"Dashboard data updated for: {dataflowid}")
+    
     df = fsdmx.get_data(dataflowid)
     records = df.reset_index().to_dict("records")
-    SDMX_DATA.update(records) 
+    SDMX_DATA[dataflowid] = records
     return jsonify({"status": "ok"})
 
 @app.callback(
@@ -89,8 +85,5 @@ def update_graph(store_data):
     fig = px.line(df, x="x", y="y", title=f"Dataset: {store_data.get('datatype', '')}")
     return fig
     
-    
-    
-
-if __name__ == "__main__":
-    app.run(debug=True)
+# if __name__ == "dashapp":
+#     app.run(debug=True, port=8083)

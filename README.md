@@ -3,6 +3,10 @@
 Aims to get data from the ABS API and display the content on a local webserver
 
 
+## ISSUES
+ERROR:    No query param passed when button press
+
+
 ## Todo
 
 - [ ] change db to SQLite, postgres to much overhead on my PC

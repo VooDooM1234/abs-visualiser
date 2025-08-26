@@ -5,5 +5,6 @@
   "plot_service_host": "127.0.0.1",
   "plot_service_port": "8082",
   "plot_service_script": "plotapp.main:app",
-  "HTMLTemplates": "templates/html/"
+  "HTMLTemplates": "templates/html/",
+  "dash_port": "8083"
 }

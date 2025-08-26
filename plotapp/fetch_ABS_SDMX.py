@@ -103,17 +103,14 @@ def get_codelists(dataflow_id):
         force=True
     )
 
-    codelists = msg.codelist
-    dataflow = msg.dataflow
-    indexCodelist = {k: v for k, v in codelists.items() if "INDEX" in k}
-    frequecyCodelist = {k: v for k, v in codelists.items() if "FREQ" in k}
+    return msg
     
     
-dataflows = get_dataflow()
-contents = dataflows.reset_index().to_dict(orient="records")
+# dataflows = get_dataflow()
+# contents = dataflows.reset_index().to_dict(orient="records")
 
-print("Available dataflows (first 10):")
-print(dataflows.head(10))
+# print("Available dataflows (first 10):")
+# print(dataflows.head(10))
 
 # df = get_data('CPI')
 # print("Sample data (first 5 rows):")
@@ -121,9 +118,9 @@ print(dataflows.head(10))
 
 # df.to_csv('../.testdata/ABORIGINAL_ID_POP_PROJ.csv')
 
-df_dsd = get_dsd('CPI')
-print("Data Structure Definition (DSD):")
-print(df_dsd.head(5))
+# df_dsd = get_dsd('CPI')
+# print("Data Structure Definition (DSD):")
+# print(df_dsd.head(5))
 
 # codelists = get_codelists('CPI')
 

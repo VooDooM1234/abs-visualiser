@@ -14,16 +14,14 @@ from fastapi.middleware.wsgi import WSGIMiddleware
 from pydantic import BaseModel
 from yaspin import yaspin
 
-from plotapp.db import init_db
 from plotapp.config import load_config
 from plotapp import fetch_ABS_SDMX as fsdmx
 
 import uvicorn
 from plotapp.dashapp import app as dash_app
-# from plotapp.dashapp import create_dashboard
 
 app = FastAPI()
-db_conn = init_db(load_config())
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("uvicorn.error")
 
@@ -46,15 +44,6 @@ graphRegistry = {
     "histogram": histogram_plot,
 }   
 
-def dataflow_to_query(dataflow):
-    dataflow = dataflow.replace("-", "_").upper()
-    query = f"SELECT * FROM {dataflow}"
-    df = pd.read_sql(query, db_conn)
-    df['value'] = pd.to_numeric(df['value'], errors='coerce').round(2).astype(float)
-    df = df.rename(columns={"time_period": "timePeriod", "value": "value"})
-    return df
-
-
 @app.get("/plot/test", response_class=HTMLResponse)
 async def get_plot():
     fig = px.line(x=[1, 2, 3], y=[10, 20, 15], title="Sample Line Plot")
@@ -69,89 +58,6 @@ async def get_plot_json():
 async def put_plot_metadata_valid_graphs():
     valid_graphs = list(graphRegistry.keys())
     return JSONResponse(content={"valid_graphs": valid_graphs}, status_code=200)
-
-
-
-# This is being mounted now so i dont think I need??
-class updateDashboardRequest(BaseModel):
-    dataflowid: str
-
-@app.post("/refresh-dashboard/", response_class=JSONResponse)
-async def get_plot_dashboard(payload: updateDashboardRequest):
-    try:
-        with yaspin(text=f"Fetching data for ID: {id} — Might take a while... good luck :)", color="cyan") as spinner:
-            logger.info(f"POST request for ABS dashboard received: {payload.dataflowid}")
-            df = fsdmx.get_data(payload.dataflowid) 
-            logger.info(f"Dashboard data updated for: {payload.dataflowid}")
-            print(f"[POST] Updated dashboard_data df shape: {df.shape}, empty: {df.empty}")
-            spinner.ok("✅")
-        return JSONResponse(content={"status": "success"})
-    except Exception as e:
-        # raise HTTPException(status_code=500, detail=f"Dashboard generation failed: {str(e)}")
-        return JSONResponse(content={"status": "fail"})
-
-@app.get("/plot/{graphName}/{dataflow}", response_class=HTMLResponse)
-async def get_abs_cpi_plot(graphName: str, dataflow: str):
-    try:
-        df = dataflow_to_query(dataflow)
-         
-        plot_func = graphRegistry.get(graphName)
-        if plot_func is None:
-            logger.error(f"Graph function {graphName} not found for dataflow {dataflow}")
-            raise HTTPException(status_code=404, detail="Graph not found")
-        fig = plot_func(df)
-        if fig is None:
-            logger.error(f"Graph function {graphName} returned None for dataflow {dataflow}")
-            raise HTTPException(status_code=404, detail="Graph not found")
-        return pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
-
-    except Exception as e:
-        logger.error(f"Error generating plot for graphName {graphName} and dataflow {dataflow}: {e}")
-        raise HTTPException(status_code=500, detail=f"Micro Service: Error generating plot: {str(e)}")
-
-@app.get("/dashboard-sample/", response_class=HTMLResponse)
-async def get_dashboard(dataflowid: str):
-    try:
-        df = dataflow_to_query(dataflowid)
-        if df.empty:
-            logger.error(f"No data available for dataflowid: {dataflowid}")
-            raise HTTPException(status_code=404, detail="No data available for the selected dataflowid")
-        
-        for graphName, plot_func in graphRegistry.items():
-            fig = plot_func(df)
-            html_plot = pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
-            combined_html += f"<div id='{graphName}' class='plot-container'>{html_plot}</div>"
-
-        return HTMLResponse(content=combined_html)
-
-    except Exception as e:
-        logger.error(f"Error generating dashboard for dataflowid {dataflowid}: {e}")    
-        raise HTTPException(status_code=500, detail=f"Error generating dashboard: {str(e)}")
-
-class DashboardRequest(BaseModel):
-    dataflowid: str
-    timePeriod  : str
-    value: float  
-    
-# @app.post("/dashboard/api/{dataflowid}/", response_class=HTMLResponse)
-# async def get_dashboard(dataflowid: str, dashboardRequest: DashboardRequest):
-#     try:
-#         data_dict = dashboardRequest.model_dump()
-#         df = pd.DataFrame([data_dict])
-#         if df.empty:
-#             logger.error(f"No data available for dataflowid: {dataflowid}")
-#             raise HTTPException(status_code=404, detail="No data available for the selected dataflowid")
-        
-#         for graphName, plot_func in graphRegistry.items():
-#             fig = plot_func(df)
-#             html_plot = pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
-#             combined_html += f"<div id='{graphName}' class='plot-container'>{html_plot}</div>"
-
-#         return HTMLResponse(content=combined_html)
-
-#     except Exception as e:
-#         logger.error(f"Error generating dashboard for dataflowid {dataflowid}: {e}")    
-#         raise HTTPException(status_code=500, detail=f"Error generating dashboard: {str(e)}")
 
 @app.get("/request-dataflow/ABS/", response_class=JSONResponse)
 async def get_dataflow_all():

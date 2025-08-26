@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 import logging
-
+import json
 def load_config():
     load_dotenv()
     
@@ -18,6 +18,11 @@ def load_config():
     db_host = parsed.hostname
     db_port = parsed.port
     db_name = parsed.path.lstrip("/")  # removes leading "/"
+    
+    with open("config.json", "r") as f:
+        config_json = json.load(f)
+        dash_port = config_json["dash_port"]
+        
 
     config = {
         "DB_NAME": db_name,
@@ -25,7 +30,10 @@ def load_config():
         "DB_PASSWORD": db_password,
         "DB_HOST": db_host,
         "DB_PORT": db_port,
+        "DASH_PORT": dash_port,
     }
+    
+    
 
     if not all(config.values()):
         raise RuntimeError("Missing one or more required environment variables")

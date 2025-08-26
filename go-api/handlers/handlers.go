@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -313,175 +312,6 @@ func PlotHandler(config *config.Config, logger *log.Logger, db *db.Database) htt
 	})
 }
 
-// FIX THIS FUNC AND ABSTRACT OUT ITEMS
-// Retrieves POST request for dashboard data button then calls python plot microservice
-// to generate the dashboard for the dataflow (ABS name for data ids)
-// Endpoint: /dashboard-retrieve/
-// Python microservice returns HTML for the dashboard
-func RequestDashboardHandler(config *config.Config, logger *log.Logger) http.Handler {
-
-	type Observation struct {
-		TimePeriod string  `json:"period"`
-		Value      float64 `json:"value"`
-	}
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		if err := r.ParseForm(); err != nil {
-			logger.Printf("Failed to parse form: %v", err)
-			http.Error(w, "Bad Request", http.StatusBadRequest)
-			return
-		}
-
-		dataflowId := r.PostFormValue("dataflowId")
-		datakey := "......"
-
-		absurl := fmt.Sprintf(
-			"https://data.api.abs.gov.au/rest/data/%s/%s?detail=dataonly",
-			dataflowId, datakey,
-		)
-		logger.Printf("Fetching ABS data: %s", absurl)
-
-		client := &http.Client{Timeout: 10 * time.Second}
-
-		req, err := http.NewRequest("GET", absurl, nil)
-		if err != nil {
-			logger.Printf("Failed to create request: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		req.Header.Set("Accept", "application/vnd.sdmx.data+json")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			logger.Printf("Failed to call ABS API: %v", err)
-			http.Error(w, "ABS service unavailable", http.StatusBadGateway)
-			return
-		}
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			logger.Printf("Failed to read ABS response: %v", err)
-			http.Error(w, "Failed to read ABS response", http.StatusInternalServerError)
-			return
-		}
-
-		if resp.StatusCode >= 400 {
-			logger.Printf("ABS API returned status %d", resp.StatusCode)
-			var apiError struct {
-				Errors []struct {
-					ID     string `json:"id"`
-					Detail string `json:"detail"`
-					Code   string `json:"code"`
-					Source struct {
-						Parameter string `json:"parameter"`
-					} `json:"source"`
-				} `json:"errors"`
-			}
-			if json.Valid(body) {
-				_ = json.Unmarshal(body, &apiError)
-				if len(apiError.Errors) > 0 {
-					msg := "ABS API Errors:\n"
-					for _, e := range apiError.Errors {
-						msg += fmt.Sprintf("%s - %s (Code: %s, Parameter: %s)\n", e.ID, e.Detail, e.Code, e.Source.Parameter)
-					}
-					http.Error(w, msg, resp.StatusCode)
-					return
-				}
-			} else {
-				http.Error(w, fmt.Sprintf("ABS API returned status %d: %s", resp.StatusCode, string(body)), resp.StatusCode)
-				return
-			}
-		}
-
-		// Use interface{} to handle numbers or strings in observations
-		var raw struct {
-			Data struct {
-				DataSets []struct {
-					Series map[string]struct {
-						Observations map[string][]interface{} `json:"observations"`
-					} `json:"series"`
-				} `json:"dataSets"`
-			} `json:"data"`
-		}
-
-		if err := json.Unmarshal(body, &raw); err != nil {
-			logger.Printf("Failed to parse ABS JSON: %v", err)
-			http.Error(w, "Failed to parse ABS JSON", http.StatusInternalServerError)
-			return
-		}
-
-		var results []Observation
-		for _, dataset := range raw.Data.DataSets {
-			for _, series := range dataset.Series {
-				for period, values := range series.Observations {
-					if len(values) == 0 {
-						continue
-					}
-
-					var val float64
-					switch v := values[0].(type) {
-					case string:
-						val, _ = strconv.ParseFloat(v, 64)
-					case float64:
-						val = v
-					case json.Number:
-						val, _ = v.Float64()
-					default:
-						continue
-					}
-
-					results = append(results, Observation{
-						TimePeriod: period,
-						Value:      val,
-					})
-				}
-			}
-		}
-
-		// for i, obs := range results {
-		// 	fmt.Printf("Observation %d: Period=%s, Value=%.2f\n", i+1, obs.Period, obs.Value)
-		// }
-
-		// Forward to microservice
-		logger.Printf("Retrieving dashboard for dataflow: %s", dataflowId)
-		microserviceurl := fmt.Sprintf("http://%s:%s/dashboard/api/%s/", config.Host, config.PlotServicePort, dataflowId)
-
-		payload, err := json.Marshal(results)
-		if err != nil {
-			logger.Printf("Failed to marshal observations: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		req, err = http.NewRequest("POST", microserviceurl, bytes.NewBuffer(payload))
-		if err != nil {
-			logger.Printf("Failed to create POST request: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		client = &http.Client{Timeout: 10 * time.Second}
-		resp, err = client.Do(req)
-		if err != nil {
-			logger.Printf("Python service unavailable: %v", err)
-			http.Error(w, "Python service unavailable", http.StatusBadGateway)
-			return
-		}
-		defer resp.Body.Close()
-
-		htmlBytes, _ := io.ReadAll(resp.Body)
-		fmt.Fprint(w, string(htmlBytes))
-	})
-}
-
 type RefreshDashboardResponse struct {
 	Status string `json:"status"`
 	// DataflowID string `json:"dataflowid"`
@@ -505,7 +335,7 @@ func RefreshDashboardhandler(config *config.Config, logger *log.Logger, db *db.D
 
 		logger.Printf("Retrieving data for dataflow: %s...", dataflowid)
 
-		url := fmt.Sprintf("http://%s:%s/refresh-dashboard/", config.Host, config.PlotServicePort)
+		url := fmt.Sprintf("http://%s:%s/refresh-dashboard/", config.Host, "54850")
 		logger.Printf("POST request to: %s", url)
 		// trying different method of posting rather then http.NewRequest and a DO method like most articles seem to say idk why they dont use this when is seems easier?
 		resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
@@ -529,6 +359,45 @@ func RefreshDashboardhandler(config *config.Config, logger *log.Logger, db *db.D
 			return
 		}
 
+	})
+}
+
+func GetDashboardHandler(cfg *config.Config, logger *log.Logger) http.Handler {
+	path := cfg.HTMLTemplates + "dashboard.html"
+	tmpl := template.Must(template.ParseFiles(path))
+
+	var payload struct {
+		DataflowID string
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if err != nil {
+			logger.Printf("Invalid request: %v", err)
+			http.Error(w, "Invalid form", http.StatusBadRequest)
+			return
+		}
+		payload.DataflowID = r.FormValue("dataflowid")
+
+		// Step 1: Notify Dash microservice
+		// url := fmt.Sprintf("http://%s:%s/refresh-dashboard/", cfg.PlotServiceHost, cfg.PlotServicePort)
+		body, _ := json.Marshal(map[string]string{"dataflowid": payload.DataflowID})
+		url := "http://localhost:8082/dashboard/refresh-dashboard/"
+		resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+		if err != nil || resp.StatusCode != http.StatusOK {
+			logger.Printf("Failed to refresh dashboard data: %v", err)
+			http.Error(w, "Failed to refresh dashboard data", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+
+		// Step 2: Render dashboard fragment
+		data := map[string]string{"DataflowID": payload.DataflowID}
+		if err := tmpl.Execute(w, data); err != nil {
+			http.Error(w, "Failed to render dashboard", http.StatusInternalServerError)
+			logger.Printf("Dashboard template error: %v", err)
+			return
+		}
 	})
 }
 

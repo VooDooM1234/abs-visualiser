@@ -28,8 +28,7 @@ func AddRoutes(
 
 	mux.Handle("/request-data/ABS/", handlers.RequestABSData(cfg, logger))
 	//plotting routes
-	mux.Handle("/request-dashboard/", handlers.RequestDashboardHandler(cfg, logger))
-	mux.Handle("/refresh-dashboard/", handlers.RefreshDashboardhandler(cfg, logger, db))
+	// mux.Handle("/refresh-dashboard/", handlers.RefreshDashboardhandler(cfg, logger, db))
 	mux.Handle("/plot/", handlers.PlotHandler(cfg, logger, db))
 
 	mux.Handle("/plot/test/", handlers.PlotTestHandler(cfg, logger))
@@ -37,5 +36,7 @@ func AddRoutes(
 
 	// reverse proxy
 	mux.Handle("/dashboard/", handlers.ReverseProxyDashHandler(cfg, logger))
+
+	mux.Handle("/get-dashboard/", handlers.GetDashboardHandler(cfg, logger))
 
 }
