@@ -5,6 +5,7 @@ import requests
 import pandas as pd
 import plotly.express as px
 import plotly.io as pio
+import sys
 
 from fastapi import FastAPI, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -20,10 +21,10 @@ from plotapp import fetch_ABS_SDMX as fsdmx
 import uvicorn
 from plotapp.dashapp import app as dash_app
 
+config = load_config()
+logger = logging.getLogger("main")
+logging.info("plotapp microservice started")
 app = FastAPI()
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("uvicorn.error")
 
 def bar_plot(df):
     return px.bar(df, x="timePeriod", y="value", title="Bar Chart")
@@ -112,7 +113,7 @@ async def get_data_abs(payload: requestCodelistABS):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"requestDataCodelist: {str(e)}")
     
-    
+
 # dash_app = create_dashboard(requests_pathname_prefix="/dashboard/")
 # dash_app.enable_dev_tools()
 app.mount("/dashboard", WSGIMiddleware(dash_app.server))

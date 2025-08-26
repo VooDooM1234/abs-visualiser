@@ -4,6 +4,8 @@ from dash.dependencies import Input, Output
 from flask import Flask, request, jsonify
 from urllib.parse import parse_qs
 from plotapp.config import load_config
+from urllib.parse import urlparse
+from urllib.parse import parse_qs
 
 import flask
 import pandas as pd
@@ -12,12 +14,20 @@ import plotly.express as px
 import logging
 
 from plotapp import fetch_ABS_SDMX as fsdmx
+from uvicorn.logging import DefaultFormatter
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("uvicorn.error")
+logger = logging.getLogger("dash")
+logger.info("Dash App Loading...")
 config = load_config()
 
-# CHNGE TO NOT BE GLOBAL THINGO BUT SQLITE
+
+
+# CHANGES NEEDED!!!!
+# 1: change the SDMX from just a dict of the data (list in store_data) to a dict witch top level field with metadata
+#  like x/y axis, title etc
+# 2: Change SDMX_DATA to not be a glbal dict - use sqlite instead
+
+
 SDMX_DATA = {}
 
 server = flask.Flask(__name__)
@@ -45,22 +55,25 @@ app.layout = html.Div([
     Input("url", "search")
 )
 def load_data_from_url(search):
-    dataflowid = request.args.get('dataflowid')
-    if dataflowid is None:
-        logger.error("No query param passed")
-    records = SDMX_DATA.get(dataflowid, [])
-    return {"dataflowid": dataflowid, "records": records}
+    # dataflowid = request.args.get('dataflowid')
+    # if dataflowid is None:
+    #     logger.error("No query param passed")
+    logger.info("DASH - Loading data from URL callback")
+    parsed_url = urlparse(search)
+    dataflowid = parse_qs(parsed_url.query)['dataflowid'][0]
+    
+    if not dataflowid:
+        logger.warning("No datatypeid found in URL")
+        return {"records": []}
+    
+    # print(dataflowid)
+    # records = SDMX_DATA.get(dataflowid, [])
+    return SDMX_DATA
 
-@app.callback(
-    Output("data-table", "data"),
-    Input("data-store", "data")
-)
-def update_table(store_data):
-    return store_data.get("records", [])
 
 @server.route("/refresh-dashboard/", methods=['POST'])
 def update_data():
-    # dataflowid = request.form.get('dataflowid')
+    global SDMX_DATA
     data = request.get_json()
     if not data or "dataflowid" not in data:
         return jsonify({"status": "error", "message": "Missing dataflowid"}), 400
@@ -69,21 +82,40 @@ def update_data():
     logger.info(f"Dashboard data updated for: {dataflowid}")
     
     df = fsdmx.get_data(dataflowid)
-    records = df.reset_index().to_dict("records")
-    SDMX_DATA[dataflowid] = records
+    SDMX_DATA = df.reset_index().to_dict("records")
+    # logger.debug(f"SDMX_DATA contains {SDMX_DATA}")
+    logger.debug(f"SDMX_DATA contains {len(SDMX_DATA)} entries.")
     return jsonify({"status": "ok"})
+
+@app.callback(
+    Output("data-table", "data"),
+    Input("data-store", "data")
+)
+def update_table(store_data):
+    logger.info("Dash - Updating table...")
+    return store_data.get("records", [])
 
 @app.callback(
     Output("graph", "figure"),
     Input("data-store", "data")
 )
 def update_graph(store_data):
-    records = store_data.get("records", [])
-    df = pd.DataFrame(records)
+    logger.info("Dash - Updating graphs")
+    logger.debug(f"store_data type: {type(store_data)}")
+    # logger.debug(f"store_data content: {store_data}")
+    # records = store_data.get("records", [])
+    df = pd.DataFrame(store_data)
+    logger.debug(f"Data frame in update graph:\n{df.head()}")
+
     if df.empty:
+        logger.warning("Dash - No Data in records for update graph")
         df = pd.DataFrame({"x": [], "y": []})
-    fig = px.line(df, x="x", y="y", title=f"Dataset: {store_data.get('datatype', '')}")
+        
+    fig = px.line(df, x="TIME_PERIOD", y="value") #, title=f"Dataset: {store_data.get('datatype', '')}")
     return fig
-    
-# if __name__ == "dashapp":
-#     app.run(debug=True, port=8083)
+
+@server.route("/debug/sdmx-cache", methods=["GET"])
+def debug_sdmx_cache():
+    return jsonify(SDMX_DATA)
+
+

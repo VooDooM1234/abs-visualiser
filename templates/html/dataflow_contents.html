@@ -9,9 +9,36 @@
   hx-vals='{"dataflowid": "{{.DataflowID}}"}'
   hx-target="#main-content"
   hx-swap="innerHTML"
+  hx-trigger="click"
+  hx-on="htmx:afterOnLoad: handleDashboardLoad('{{.DataflowID}}')"
 >
   View Dashboard
 </button>
+
+<script>
+function handleDashboardLoad(dataflowid) {
+  const overlay = document.getElementById("loading-overlay");
+  overlay.style.display = "flex";
+
+  fetch("/refresh-dashboard/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataflowid })
+  })
+  .then(res => res.json())
+  .then(json => {
+    if (json.status === "ok") {
+      const iframe = document.querySelector("iframe");
+      iframe.src = `/dashboard/?dataflowid=${dataflowid}`;
+      iframe.onload = () => overlay.style.display = "none";
+    } else {
+      overlay.style.display = "none";
+      alert("Dashboard refresh failed.");
+    }
+  });
+}
+</script>
+
 
   </td>
 </tr>

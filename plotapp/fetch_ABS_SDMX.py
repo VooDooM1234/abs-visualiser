@@ -4,13 +4,14 @@ import pandas as pd
 from io import BytesIO
 from urllib.parse import urlencode
 from yaspin import yaspin
+from uvicorn.logging import DefaultFormatter
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("sdmx")
 
 # https://data.api.abs.gov.au/rest/codelist/ABS/CL_CPI_INDEX_17
-
 def get_dataflow():
     try:
+        logger.info("Getting dataflow for ABS")
         abs= sdmx.Request('ABS_XML', log_level=logging.INFO)
         flow_msg = abs.dataflow(force=True)
         dataflows = sdmx.to_pandas(flow_msg.dataflow)
