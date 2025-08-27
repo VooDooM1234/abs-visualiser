@@ -1,20 +1,12 @@
-<!-- dashboard frag -->
+<!-- Dashboard Fragment -->
 <h5 id="title-dashboard" class="text-center mb-4">Dashboard</h5>
 <div class="card shadow-sm p-3 mb-4">
 
-  <!-- Loading overlay -->
-  <div id="loading-overlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-  </div>
-<!-- Dash resverse proxy  -->
-<iframe
-  src="/dashboard/?dataflowid={{.DataflowID}}"
-  style="width: 100%; height: 1200px; border: none;"
-  title="ABS Dashboard"
-  onload="document.getElementById('loading-overlay').style.display='none';"
-></iframe>
+  <!-- Dash reverse proxy -->
+  <iframe
+    src="/dashboard/?dataflowid={{.DataflowID}}"
+    style="width: 100%; height: 1200px; border: none;"
+    title="ABS Dashboard">
+  </iframe>
 
 </div>
-

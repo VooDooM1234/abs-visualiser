@@ -6,6 +6,7 @@
 <button
   class="btn btn-success"
   hx-post="/get-dashboard/"
+  hx-ext="json-enc"
   hx-vals='{"dataflowid": "{{.DataflowID}}"}'
   hx-target="#main-content"
   hx-swap="innerHTML"

@@ -45,29 +45,33 @@ app = dash.Dash(__name__, server=server, requests_pathname_prefix="/dashboard/")
 
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
-    dcc.Store(id="data-store"),
-    dash_table.DataTable(id="data-table", data=[], page_size=10),
-    dcc.Graph(id="graph")
+    dcc.Loading(
+        id="loading-indicator",
+        type="circle",
+        children=[
+            dcc.Store(id="data-store"),
+            dash_table.DataTable(id="data-table", data=[], page_size=10),
+            dcc.Graph(id="graph")
+        ]
+    )
 ])
 
 @app.callback(
     Output("data-store", "data"),
     Input("url", "search")
 )
-def load_data_from_url(search):
-    # dataflowid = request.args.get('dataflowid')
-    # if dataflowid is None:
-    #     logger.error("No query param passed")
+def load_data_from_url(href):
     logger.info("DASH - Loading data from URL callback")
-    parsed_url = urlparse(search)
-    dataflowid = parse_qs(parsed_url.query)['dataflowid'][0]
+    parsed_url = urlparse(href)
+    dataflowid = parse_qs(parsed_url.query).get("dataflowid", [None])[0]
     
     if not dataflowid:
         logger.warning("No datatypeid found in URL")
         return {"records": []}
     
-    # print(dataflowid)
-    # records = SDMX_DATA.get(dataflowid, [])
+    logger.debug(f"Parsed_url: {parsed_url}")
+    logger.debug(f"dataflowid: {dataflowid}")
+    
     return SDMX_DATA
 
 
@@ -87,13 +91,13 @@ def update_data():
     logger.debug(f"SDMX_DATA contains {len(SDMX_DATA)} entries.")
     return jsonify({"status": "ok"})
 
-@app.callback(
-    Output("data-table", "data"),
-    Input("data-store", "data")
-)
-def update_table(store_data):
-    logger.info("Dash - Updating table...")
-    return store_data.get("records", [])
+# @app.callback(
+#     Output("data-table", "data"),
+#     Input("data-store", "data")
+# )
+# def update_table(store_data):
+#     logger.info("Dash - Updating table...")
+#     return store_data.get("records", [])
 
 @app.callback(
     Output("graph", "figure"),
@@ -105,7 +109,7 @@ def update_graph(store_data):
     # logger.debug(f"store_data content: {store_data}")
     # records = store_data.get("records", [])
     df = pd.DataFrame(store_data)
-    logger.debug(f"Data frame in update graph:\n{df.head()}")
+    logger.debug(f"DASHAPP - Data frame in update graph:\n{df.head()}")
 
     if df.empty:
         logger.warning("Dash - No Data in records for update graph")

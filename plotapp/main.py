@@ -74,7 +74,7 @@ async def get_dataflow_all():
             }, inplace=True)
             
             df_dict = df_flat.to_dict("records")
-            logger.debug(json.dumps(df_dict, indent=4))
+            # logger.debug(json.dumps(df_dict, indent=4))
             spinner.ok("✅")
 
         return JSONResponse(content=df_dict)

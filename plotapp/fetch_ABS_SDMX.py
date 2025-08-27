@@ -35,40 +35,38 @@ def get_dataflow():
 def get_data(id: str, datakey: str = None, timeout: int = 300):
     abs = sdmx.Request('ABS_XML', timeout=timeout)
     try:
-        with yaspin(text=f"Fetching data for ID: {id} — Might take a while... good luck :)", color="cyan") as spinner:
-            logging.info(f"Fetching data for ID: {id} — Might take a while... good luck :)")
-    
-        # data_msg = abs_xml.data(resource_id=id, force=True)
-        
-            params={
-                'format':'jsondata',
-                'detail': 'dataonly'
-            }
-            
-            # startPeriod = 2000
-            # endPeriod = 2025
-            
-            # if startPeriod:
-            #     params['startPeriod'] = endPeriod
-            # if endPeriod:
-            #     params['endPeriod'] = endPeriod
-            
-            if datakey is None:
-                # default to CPI one for now - fix when adding dynamic logic
-                datakey = "1.10001...Q"
-                
-            id = f"{id}/{datakey}"
-            
+        logging.info(f"Fetching data for ID: {id} — Might take a while... good luck :)")
 
-            # I have no idea why params arent working and I have spent to long on this they dont matter to much for us anyway
-            msg = abs.get(
-                resource_type='data',
-                resource_id=id,
-                # params=params,
-                force=True
-            )
-            spinner.ok("✅ ")
+        # data_msg = abs_xml.data(resource_id=id, force=True)
+    
+        params={
+            'format':'jsondata',
+            'detail': 'dataonly'
+        }
+        
+        # startPeriod = 2000
+        # endPeriod = 2025
+        
+        # if startPeriod:
+        #     params['startPeriod'] = endPeriod
+        # if endPeriod:
+        #     params['endPeriod'] = endPeriod
+        
+        if datakey is None:
+            # default to CPI one for now - fix when adding dynamic logic
+            datakey = "1.10001...Q"
             
+        id = f"{id}/{datakey}"
+        
+
+        # I have no idea why params arent working and I have spent to long on this they dont matter to much for us anyway
+        msg = abs.get(
+            resource_type='data',
+            resource_id=id,
+            # params=params,
+            force=True
+        )
+         
         df = sdmx.to_pandas(msg.data)
         print(df.head())
         if df.empty:
