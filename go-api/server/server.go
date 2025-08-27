@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"sync"
 	"time"
 
@@ -38,12 +39,12 @@ func launchPythonMicroservice(config *config.Config) {
 		"-m", "uvicorn",
 		"plotapp.main:app",
 		"--host", config.PlotServiceHost,
-		"--port", config.PlotServicePort,
+		"--port", strconv.Itoa(config.PlotServicePort),
 	)
 
 	cmd.Env = append(os.Environ(),
 		"PLOT_SERVICE_HOST="+config.PlotServiceHost,
-		"PLOT_SERVICE_PORT="+config.PlotServicePort,
+		"PLOT_SERVICE_PORT="+strconv.Itoa(config.PlotServicePort),
 	)
 
 	cmd.Stdout = os.Stdout
@@ -54,7 +55,7 @@ func launchPythonMicroservice(config *config.Config) {
 		log.Fatalf("Failed to launch Python microservice: %v", err)
 	}
 
-	log.Printf("Python microservice running at http://%s:%s\n", config.PlotServiceHost, config.PlotServicePort)
+	log.Printf("Python microservice running at http://%s:%d\n", config.PlotServiceHost, config.PlotServicePort)
 }
 
 // STOP STEALIN MY PORTS
@@ -94,19 +95,12 @@ func Run(ctx context.Context, w io.Writer, args []string) error {
 	)
 
 	httpServer := &http.Server{
-		Addr:    net.JoinHostPort(config.Host, config.Port),
+		Addr:    net.JoinHostPort(config.Host, strconv.Itoa(config.Port)),
 		Handler: srv,
 	}
 
-	// client := fetch.NewFetch("https", "data.api.abs.gov.au", 0)
-	// err = client.ABSRestDataflowAll(databaseConnect)
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return err
-	// }
-
-	KillPort(config.PlotServicePort)
-	KillPort(config.Port)
+	KillPort(strconv.Itoa(config.PlotServicePort))
+	KillPort(strconv.Itoa(config.Port))
 	launchPythonMicroservice(config)
 
 	go func() {

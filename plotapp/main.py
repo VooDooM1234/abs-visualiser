@@ -81,7 +81,7 @@ async def get_dataflow_all():
     
     except Exception as e:
         logger.error(f"Failed to fetch dataflow: {e}")
-        return JSONResponse(content={"status": "failed"})
+        return JSONResponse(content={"status": "failed", "message": {e}})
 class requestDataABS(BaseModel):
     dataflowid: str
 

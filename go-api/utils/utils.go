@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -37,4 +38,24 @@ func KillPort(port string) error {
 	cmd.Stderr = os.Stderr
 
 	return cmd.Run()
+}
+
+// generic check for mservice response of {"status": "success/fail"}
+func CheckFailureResponse(body []byte, logger *log.Logger) error {
+	var genericResp map[string]interface{}
+	if err := json.Unmarshal(body, &genericResp); err != nil {
+		logger.Printf("Failed to parse JSON: %v", err)
+		return fmt.Errorf("invalid response format")
+	}
+
+	if status, ok := genericResp["status"]; ok && status == "failed" {
+		message := "Unknown error"
+		if msg, exists := genericResp["message"]; exists {
+			message = fmt.Sprintf("%v", msg)
+		}
+		logger.Printf("Backend returned failure: %s", message)
+		return fmt.Errorf(message)
+	}
+
+	return nil
 }

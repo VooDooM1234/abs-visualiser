@@ -19,36 +19,9 @@ class StreamToLogger:
         return True
 
 def load_config():
-    load_dotenv()
-
-    LOGGING_CONFIG = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "default": {
-                "()": "uvicorn.logging.DefaultFormatter",
-                "format": "%(levelprefix)s %(message)s",
-                "use_colors": True,
-            },
-        },
-        "handlers": {
-            "default": {
-                "formatter": "default",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-            },
-        },
-        "loggers": {
-            "uvicorn.error": {"handlers": ["default"], "level": "DEBUG"},
-            "uvicorn.access": {"handlers": ["default"], "level": "INFO"},
-            "dash": {"handlers": ["default"], "level": "DEBUG"},
-            "flask.app": {"handlers": ["default"], "level": "DEBUG"},
-            "sdmx": {"handlers": ["default"], "level": "DEBUG"},
-            "main": {"handlers": ["default"], "level": "DEBUG"},
-        },
-    }
-
-    logging.config.dictConfig(LOGGING_CONFIG)
+    load_dotenv()    
+    
+    
 
     # Load environment variables
     db_url = os.getenv("DATABASE_URL")
@@ -66,7 +39,8 @@ def load_config():
     with open("config.json", "r") as f:
         config_json = json.load(f)
         dash_port = config_json.get("dash_port")
-
+        logging_config = config_json.get("logging_config")
+         
     config = {
         "DB_NAME": db_name,
         "DB_USER": db_user,
@@ -75,6 +49,8 @@ def load_config():
         "DB_PORT": db_port,
         "DASH_PORT": dash_port,
     }
+    
+    logging.config.dictConfig(logging_config)
 
     if not all(config.values()):
         raise RuntimeError("Missing one or more required environment variables or config values")

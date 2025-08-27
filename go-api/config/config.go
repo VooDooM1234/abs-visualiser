@@ -13,17 +13,26 @@ type apiKeys struct {
 	abs     string
 }
 
+type LoggingConfig struct {
+	Version                int                    `json:"version"`
+	DisableExistingLoggers bool                   `json:"disable_existing_loggers"`
+	Formatters             map[string]interface{} `json:"formatters"`
+	Handlers               map[string]interface{} `json:"handlers"`
+	Loggers                map[string]interface{} `json:"loggers"`
+}
+
 type Config struct {
-	postgresURL       string
-	PythonPath        string `json:"python_path"`
-	DefaultChart      string `json:"default_chart"`
-	DataSource        string `json:"data_source"`
-	PlotServiceHost   string `json:"plot_service_host"`
-	PlotServicePort   string `json:"plot_service_port"`
-	PlotServiceScript string `json:"plot_service_script"`
-	Host              string `json:"host"`
-	Port              string `json:"port"`
-	HTMLTemplates     string `json:"HTMLTemplates"`
+	PostgresURL       string        `json:"postgres_url"`
+	PythonPath        string        `json:"python_path"`
+	DefaultChart      string        `json:"default_chart"`
+	DataSource        string        `json:"data_source"`
+	PlotServiceHost   string        `json:"plot_service_host"`
+	PlotServicePort   int           `json:"plot_service_port"`
+	PlotServiceScript string        `json:"plot_service_script"`
+	Host              string        `json:"host"`
+	Port              int           `json:"port"`
+	HTMLTemplates     string        `json:"HTMLTemplates"`
+	LoggingConfig     LoggingConfig `json:"logging_config"`
 }
 
 var keys apiKeys
@@ -32,7 +41,7 @@ var config Config
 func Init() (*Config, error) {
 	_ = godotenv.Load(".env")
 
-	config.postgresURL = os.Getenv("DATABASE_URL")
+	config.PostgresURL = os.Getenv("DATABASE_URL")
 	keys.weather = os.Getenv("WEATHER_API_KEY")
 	keys.abs = os.Getenv("ABS_API_KEY")
 
@@ -43,7 +52,7 @@ func Init() (*Config, error) {
 	// 	log.Fatal("Missing ABS_API_KEY in environment!")
 	// }
 
-	if config.postgresURL == "" {
+	if config.PostgresURL == "" {
 		log.Fatal("DATABASE_URL not set")
 	}
 
@@ -69,5 +78,5 @@ func GetWeatherKey() string {
 }
 
 func GetPostgresURL() string {
-	return config.postgresURL
+	return config.PostgresURL
 }

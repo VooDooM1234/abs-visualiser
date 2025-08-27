@@ -1,10 +1,36 @@
 {
   "python_path": ".venv/Scripts/python.exe",
   "host": "127.0.0.1",
-  "port": "8081",
+  "port": 8081,
   "plot_service_host": "127.0.0.1",
-  "plot_service_port": "8082",
+  "plot_service_port": 8082,
   "plot_service_script": "plotapp.main:app",
   "HTMLTemplates": "templates/html/",
-  "dash_port": "8083"
+  "dash_port": 8083,
+  "logging_config": {
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+      "default": {
+        "()": "uvicorn.logging.DefaultFormatter",
+        "format": "%(levelprefix)s %(message)s",
+        "use_colors": true
+      }
+    },
+    "handlers": {
+      "default": {
+        "formatter": "default",
+        "class": "logging.StreamHandler",
+        "stream": "ext://sys.stdout"
+      }
+    },
+    "loggers": {
+      "uvicorn.error": { "handlers": ["default"], "level": "DEBUG" },
+      "uvicorn.access": { "handlers": ["default"], "level": "INFO" },
+      "dash": { "handlers": ["default"], "level": "DEBUG" },
+      "flask.app": { "handlers": ["default"], "level": "DEBUG" },
+      "sdmx": { "handlers": ["default"], "level": "DEBUG" },
+      "main": { "handlers": ["default"], "level": "DEBUG" }
+    }
+  }
 }

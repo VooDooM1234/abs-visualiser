@@ -35,7 +35,7 @@ func RequestDataflowABS(config *config.Config, logger *log.Logger) http.Handler 
 	path := config.HTMLTemplates + "dataflow_contents.html"
 	tmpl := template.Must(template.ParseFiles(path))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		url := fmt.Sprintf("http://%s:%s/request-dataflow/ABS/", config.Host, config.PlotServicePort)
+		url := fmt.Sprintf("http://%s:%d/request-dataflow/ABS/", config.Host, config.PlotServicePort)
 		logger.Printf("GET request to: %s", url)
 		resp, err := http.Get(url)
 		if err != nil {
@@ -52,6 +52,12 @@ func RequestDataflowABS(config *config.Config, logger *log.Logger) http.Handler 
 			http.Error(w, "Failed to read response", http.StatusInternalServerError)
 			return
 		}
+		// fix genric error reponse handler
+		// if err := utils.CheckFailureResponse(body, logger); err != nil {
+		// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 	log.Printf("Failed to check generic response: %v", err)
+		// 	return
+		// }
 
 		var result []DataflowABS
 		if err := json.Unmarshal(body, &result); err != nil {
@@ -59,6 +65,7 @@ func RequestDataflowABS(config *config.Config, logger *log.Logger) http.Handler 
 			http.Error(w, "Invalid response format", http.StatusInternalServerError)
 			return
 		}
+
 		// move the serviering to a handler func
 		if err := tmpl.Execute(w, result); err != nil {
 			http.Error(w, "Failed to render template", http.StatusInternalServerError)
@@ -169,7 +176,7 @@ func DashboardHandler(cfg *config.Config, logger *log.Logger) http.Handler {
 // Reverse proxy for Ploty Dash (Python mservice)
 func ReverseProxyDashHandler(cfg *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		target, err := url.Parse(fmt.Sprintf("http://%s:%s", cfg.PlotServiceHost, cfg.PlotServicePort))
+		target, err := url.Parse(fmt.Sprintf("http://%s:%d", cfg.PlotServiceHost, cfg.PlotServicePort))
 		if err != nil {
 			logger.Printf("Dash Reverse Proxy parse error: %v", err)
 			http.Error(w, "bad upstream", http.StatusInternalServerError)
@@ -225,7 +232,7 @@ func RequestABSData(config *config.Config, logger *log.Logger) http.Handler {
 			return
 		}
 		logger.Printf("Retrieving data for dataflow: %s...", dataflowid)
-		microserviceurl := fmt.Sprintf("http://%s:%s/request-data/ABS/", config.PlotServiceHost, config.PlotServicePort)
+		microserviceurl := fmt.Sprintf("http://%s:%d/request-data/ABS/", config.PlotServiceHost, config.PlotServicePort)
 		logger.Printf("POST request to: %s", microserviceurl)
 		req, err := http.NewRequest("POST", microserviceurl, bytes.NewBuffer(jsonPayload))
 		if err != nil {
@@ -404,7 +411,7 @@ func GetDashboardHandler(cfg *config.Config, logger *log.Logger) http.Handler {
 func PlotTestHandler(config *config.Config, logger *log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		url := fmt.Sprintf("http://%s:%s/plot/test", config.Host, config.PlotServicePort)
+		url := fmt.Sprintf("http://%s:%d/plot/test", config.Host, config.PlotServicePort)
 		resp, err := http.Get(url)
 
 		if err != nil {
@@ -423,7 +430,7 @@ func PlotTestJSONHandler(config *config.Config, logger *log.Logger) http.Handler
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		url := fmt.Sprintf("http://%s:%s/plot/test/json", config.Host, config.PlotServicePort)
+		url := fmt.Sprintf("http://%s:%d/plot/test/json", config.Host, config.PlotServicePort)
 		resp, err := http.Get(url)
 		if err != nil {
 			http.Error(w, "Python service unavailable", http.StatusBadGateway)

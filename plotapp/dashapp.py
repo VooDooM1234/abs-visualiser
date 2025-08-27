@@ -17,6 +17,7 @@ from plotapp import fetch_ABS_SDMX as fsdmx
 from uvicorn.logging import DefaultFormatter
 
 logger = logging.getLogger("dash")
+logger.propagate = False
 logger.info("Dash App Loading...")
 config = load_config()
 
@@ -73,7 +74,6 @@ def load_data_from_url(href):
     logger.debug(f"dataflowid: {dataflowid}")
     
     return SDMX_DATA
-
 
 @server.route("/refresh-dashboard/", methods=['POST'])
 def update_data():
