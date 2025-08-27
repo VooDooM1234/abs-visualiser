@@ -6,17 +6,15 @@
 <button
   class="btn btn-success"
   hx-post="/get-dashboard/"
-  hx-ext="json-enc"
   hx-vals='{"dataflowid": "{{.DataflowID}}"}'
   hx-target="#main-content"
   hx-swap="innerHTML"
-  hx-trigger="click"
-  hx-on="htmx:afterOnLoad: handleDashboardLoad('{{.DataflowID}}')"
 >
   View Dashboard
 </button>
 
-<script>
+<!--   hx-on="htmx:afterOnLoad: handleDashboardLoad('{{.DataflowID}}')" -->
+<!-- <script>
 function handleDashboardLoad(dataflowid) {
   const overlay = document.getElementById("loading-overlay");
   overlay.style.display = "flex";
@@ -38,7 +36,7 @@ function handleDashboardLoad(dataflowid) {
     }
   });
 }
-</script>
+</script> -->
 
 
   </td>

@@ -59,37 +59,49 @@ app.layout = html.Div([
 
 @app.callback(
     Output("data-store", "data"),
-    Input("url", "search")
+    Input("url", "href")
 )
 def load_data_from_url(href):
     logger.info("DASH - Loading data from URL callback")
     parsed_url = urlparse(href)
     dataflowid = parse_qs(parsed_url.query).get("dataflowid", [None])[0]
     
+    logger.debug(f"Parsed_url: {parsed_url}")
+    logger.debug(f"dataflowid: {dataflowid}")
+    
     if not dataflowid:
         logger.warning("No datatypeid found in URL")
         return {"records": []}
     
-    logger.debug(f"Parsed_url: {parsed_url}")
-    logger.debug(f"dataflowid: {dataflowid}")
-    
     return SDMX_DATA
 
 @server.route("/refresh-dashboard/", methods=['POST'])
-def update_data():
-    global SDMX_DATA
+def refresh_dashboard():
     data = request.get_json()
-    if not data or "dataflowid" not in data:
-        return jsonify({"status": "error", "message": "Missing dataflowid"}), 400
-    
-    dataflowid = data["dataflowid"]
-    logger.info(f"Dashboard data updated for: {dataflowid}")
-    
-    df = fsdmx.get_data(dataflowid)
-    SDMX_DATA = df.reset_index().to_dict("records")
-    # logger.debug(f"SDMX_DATA contains {SDMX_DATA}")
-    logger.debug(f"SDMX_DATA contains {len(SDMX_DATA)} entries.")
-    return jsonify({"status": "ok"})
+    dataflowid = data.get("dataflowid") if data else None
+
+    if not dataflowid:  # catches None or empty string
+        logger.error(f"Missing or empty dataflowid: {data}")
+        return jsonify({"status": "error", "message": "Missing or empty dataflowid"}), 400
+
+    logger.info(f"Refreshing dashboard data for: {dataflowid}")
+
+    try:
+        df = fsdmx.get_data(dataflowid)
+
+        if df.empty:
+            logger.warning(f"No data returned for dataflowid: {dataflowid}")
+            return jsonify({"status": "error", "message": "No data returned"}), 404
+
+        # Return records directly
+        records = df.reset_index().to_dict("records")
+        logger.debug(f"Returning {len(records)} records for {dataflowid}")
+        return jsonify({"status": "ok", "records": records})
+
+    except Exception as e:
+        logger.error(f"Failed to fetch data for {dataflowid}: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 # @app.callback(
 #     Output("data-table", "data"),

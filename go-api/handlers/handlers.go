@@ -384,12 +384,19 @@ func GetDashboardHandler(cfg *config.Config, logger *log.Logger) http.Handler {
 			http.Error(w, "Invalid form", http.StatusBadRequest)
 			return
 		}
-		payload.DataflowID = r.FormValue("dataflowid")
+
+		dataflowID := r.FormValue("dataflowid")
+		if dataflowID == "" {
+			logger.Printf("Missing dataflowid in request")
+			http.Error(w, "Missing dataflowid", http.StatusBadRequest)
+			return
+		}
 
 		// Step 1: Notify Dash microservice
 		// url := fmt.Sprintf("http://%s:%s/refresh-dashboard/", cfg.PlotServiceHost, cfg.PlotServicePort)
-		body, _ := json.Marshal(map[string]string{"dataflowid": payload.DataflowID})
+		body, _ := json.Marshal(map[string]string{"dataflowid": dataflowID})
 		url := "http://localhost:8082/dashboard/refresh-dashboard/"
+		logger.Printf("Sending Payload: %s", body)
 		resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 		if err != nil || resp.StatusCode != http.StatusOK {
 			logger.Printf("Failed to refresh dashboard data: %v", err)
