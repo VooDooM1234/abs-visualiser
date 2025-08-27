@@ -36,14 +36,6 @@ server.secret_key = os.environ.get("secret_key", "secret")
 
 app = dash.Dash(__name__, server=server, requests_pathname_prefix="/dashboard/")
 
-
-# app.layout = html.Div([
-#     # html.H3("ABS Dashboard"),
-#     dash_table.DataTable(id="data-table", data=[], page_size=10),
-#     # Poll every 2s - fix this to not poll and by dynamic through API call
-#     dcc.Interval(id="interval", interval=2000, n_intervals=0)  
-# ])
-
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
     dcc.Loading(
@@ -77,6 +69,7 @@ def load_data_from_url(href):
 
 @server.route("/refresh-dashboard/", methods=['POST'])
 def refresh_dashboard():
+    global SDMX_DATA
     data = request.get_json()
     dataflowid = data.get("dataflowid") if data else None
 
@@ -96,6 +89,7 @@ def refresh_dashboard():
         # Return records directly
         records = df.reset_index().to_dict("records")
         logger.debug(f"Returning {len(records)} records for {dataflowid}")
+        SDMX_DATA = records
         return jsonify({"status": "ok", "records": records})
 
     except Exception as e:
@@ -118,7 +112,7 @@ def refresh_dashboard():
 def update_graph(store_data):
     logger.info("Dash - Updating graphs")
     logger.debug(f"store_data type: {type(store_data)}")
-    # logger.debug(f"store_data content: {store_data}")
+    logger.debug(f"store_data content: {store_data}")
     # records = store_data.get("records", [])
     df = pd.DataFrame(store_data)
     logger.debug(f"DASHAPP - Data frame in update graph:\n{df.head()}")

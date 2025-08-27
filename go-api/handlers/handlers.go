@@ -373,10 +373,6 @@ func GetDashboardHandler(cfg *config.Config, logger *log.Logger) http.Handler {
 	path := cfg.HTMLTemplates + "dashboard.html"
 	tmpl := template.Must(template.ParseFiles(path))
 
-	var payload struct {
-		DataflowID string
-	}
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
@@ -406,7 +402,7 @@ func GetDashboardHandler(cfg *config.Config, logger *log.Logger) http.Handler {
 		defer resp.Body.Close()
 
 		// Step 2: Render dashboard fragment
-		data := map[string]string{"DataflowID": payload.DataflowID}
+		data := map[string]string{"DataflowID": dataflowID}
 		if err := tmpl.Execute(w, data); err != nil {
 			http.Error(w, "Failed to render dashboard", http.StatusInternalServerError)
 			logger.Printf("Dashboard template error: %v", err)
