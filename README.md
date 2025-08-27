@@ -3,12 +3,11 @@
 Aims to get data from the ABS API and display the content on a local webserver
 
 
-## ISSUES
-ERROR:    No query param passed when button press
+
 
 
 ## Todo
-
+- [ ] updated GO logging to match python
 - [ ] change db to SQLite, postgres to much overhead on my PC
 - [ ] show both database and direct data queries to ABS
 - [ ] Fix oython plotly graph params ie. labels, etc.

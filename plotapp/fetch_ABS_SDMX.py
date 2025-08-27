@@ -6,28 +6,29 @@ from urllib.parse import urlencode
 from yaspin import yaspin
 from uvicorn.logging import DefaultFormatter
 
-logger = logging.getLogger("sdmx")
+logger = logging.getLogger("main")
+logger.propagate = False
 
 # https://data.api.abs.gov.au/rest/codelist/ABS/CL_CPI_INDEX_17
 def get_dataflow():
     try:
         logger.info("Getting dataflow for ABS")
-        abs= sdmx.Request('ABS_XML', log_level=logging.INFO)
+        abs=sdmx.Request('ABS_XML')
         flow_msg = abs.dataflow(force=True)
         dataflows = sdmx.to_pandas(flow_msg.dataflow)
         if dataflows.empty:
-            logging.warning("No dataflows found in the ABS XML response.")
+            logger.warning("No dataflows found in the ABS XML response.")
             return pd.DataFrame()
         
-        logging.info(f"Fetched {len(dataflows)} dataflows successfully.")
+        logger.info(f"Fetched {len(dataflows)} dataflows successfully.")
         return dataflows
 
     except sdmx.exceptions.RequestError as e:
-        logging.error(f"RequestError while fetching dataflows: {e}")
+        logger.error(f"RequestError while fetching dataflows: {e}")
     except sdmx.exceptions.ParseError as e:
-        logging.error(f"ParseError while decoding the ABS response: {e}")
+        logger.error(f"ParseError while decoding the ABS response: {e}")
     except Exception as e:
-        logging.error(f"Unexpected error: {e}")
+        logger.error(f"Unexpected error: {e}")
     return pd.DataFrame()
 
 # add the ability to pass hashmap of params
@@ -35,7 +36,7 @@ def get_dataflow():
 def get_data(id: str, datakey: str = None, timeout: int = 300):
     abs = sdmx.Request('ABS_XML', timeout=timeout)
     try:
-        logging.info(f"Fetching data for ID: {id} — Might take a while... good luck :)")
+        logger.info(f"Fetching data for ID: {id} — Might take a while... good luck :)")
 
         # data_msg = abs_xml.data(resource_id=id, force=True)
     
@@ -68,29 +69,31 @@ def get_data(id: str, datakey: str = None, timeout: int = 300):
         )
          
         df = sdmx.to_pandas(msg.data)
-        print(df.head())
+        df = df.to_frame()
+        df = df.rename(columns={'value':'OBS_VALUE'})
+
         if df.empty:
-            logging.error(f"No data found for ID: {id}")
+            logger.error(f"No data found for ID: {id}")
             return pd.DataFrame()
-        logging.info(f"Fetched data for ID {id} successfully.")
+        logger.info(f"Fetched data for ID {id} successfully.")
         return df
     except Exception as e:
-        logging.error(f"Error fetching data for ID {id}: {e}")
+        logger.error(f"Error fetching data for ID {id}: {e}")
         return pd.DataFrame()
     
 def get_dsd(id: str):
     abs_xml = sdmx.Request('ABS_XML')
     try:
-        logging.info(f"Fetching DSD for ID: {id}")
+        logger.info(f"Fetching DSD for ID: {id}")
         dsd_msg = abs_xml.data_structure(resource_id=id, force=True)
         dsd = sdmx.to_pandas(dsd_msg.data_structure)
         if dsd.empty:
-            logging.error(f"No DSD found for ID: {id}")
+            logger.error(f"No DSD found for ID: {id}")
             return pd.DataFrame()
-        logging.info(f"Fetched DSD for ID {id} successfully.")
+        logger.info(f"Fetched DSD for ID {id} successfully.")
         return dsd
     except Exception as e:
-        logging.error(f"Error fetching DSD for ID {id}: {e}")
+        logger.error(f"Error fetching DSD for ID {id}: {e}")
         return pd.DataFrame()
     
 def get_codelists(dataflow_id):

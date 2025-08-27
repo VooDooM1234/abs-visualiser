@@ -25,10 +25,7 @@
       }
     },
     "loggers": {
-      "uvicorn.error": { "handlers": ["default"], "level": "DEBUG" },
-      "uvicorn.access": { "handlers": ["default"], "level": "INFO" },
       "dash": { "handlers": ["default"], "level": "DEBUG" },
-      "flask.app": { "handlers": ["default"], "level": "DEBUG" },
       "sdmx": { "handlers": ["default"], "level": "DEBUG" },
       "main": { "handlers": ["default"], "level": "DEBUG" }
     }

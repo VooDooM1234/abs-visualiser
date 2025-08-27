@@ -1,7 +1,7 @@
 import dash
 from dash import html, dcc, dash_table
 from dash.dependencies import Input, Output
-from flask import Flask, request, jsonify
+from flask import request, jsonify
 from urllib.parse import parse_qs
 from plotapp.config import load_config
 from urllib.parse import urlparse
@@ -14,7 +14,6 @@ import plotly.express as px
 import logging
 
 from plotapp import fetch_ABS_SDMX as fsdmx
-from uvicorn.logging import DefaultFormatter
 
 logger = logging.getLogger("dash")
 logger.propagate = False
@@ -31,6 +30,13 @@ config = load_config()
 
 SDMX_DATA = {}
 
+LabelMap = {
+    'TIME_PERIOD': 'Time Period',
+    'OBS_VALUE': 'Value'
+}
+
+valid_columns_list = ["TIME_PERIOD", "OBS_VALUE"]
+
 server = flask.Flask(__name__)
 server.secret_key = os.environ.get("secret_key", "secret")
 
@@ -44,28 +50,11 @@ app.layout = html.Div([
         children=[
             dcc.Store(id="data-store"),
             dash_table.DataTable(id="data-table", data=[], page_size=10),
-            dcc.Graph(id="graph")
+            dcc.Graph(id="line"),
+            dcc.Graph(id="bar")
         ]
     )
 ])
-
-@app.callback(
-    Output("data-store", "data"),
-    Input("url", "href")
-)
-def load_data_from_url(href):
-    logger.info("DASH - Loading data from URL callback")
-    parsed_url = urlparse(href)
-    dataflowid = parse_qs(parsed_url.query).get("dataflowid", [None])[0]
-    
-    logger.debug(f"Parsed_url: {parsed_url}")
-    logger.debug(f"dataflowid: {dataflowid}")
-    
-    if not dataflowid:
-        logger.warning("No datatypeid found in URL")
-        return {"records": []}
-    
-    return SDMX_DATA
 
 @server.route("/refresh-dashboard/", methods=['POST'])
 def refresh_dashboard():
@@ -85,47 +74,89 @@ def refresh_dashboard():
         if df.empty:
             logger.warning(f"No data returned for dataflowid: {dataflowid}")
             return jsonify({"status": "error", "message": "No data returned"}), 404
-
-        # Return records directly
+        
+        df = df.reset_index()
+        logger.debug(f"DF RESET INDEX {df}")
+        df = store_data_preprocess(df)
+        
         records = df.reset_index().to_dict("records")
+        records = [{k.upper(): v for k, v in rec.items()} for rec in records]
+
         logger.debug(f"Returning {len(records)} records for {dataflowid}")
+        records = [{k.upper(): v for k, v in rec.items()} for rec in records]
+        logger.debug(f"SDMX_DATA going to dcc.Store (head): {records[:5]}")
+              
         SDMX_DATA = records
+
         return jsonify({"status": "ok", "records": records})
 
     except Exception as e:
         logger.error(f"Failed to fetch data for {dataflowid}: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
-
-
-# @app.callback(
-#     Output("data-table", "data"),
-#     Input("data-store", "data")
-# )
-# def update_table(store_data):
-#     logger.info("Dash - Updating table...")
-#     return store_data.get("records", [])
-
+    
 @app.callback(
-    Output("graph", "figure"),
+    Output("data-store", "data"),
+    Input("url", "href")
+)
+def load_data_from_url(href):
+    logger.info("DASH - Loading data from URL callback")
+    parsed_url = urlparse(href)
+    dataflowid = parse_qs(parsed_url.query).get("dataflowid", [None])[0]
+ 
+    logger.debug(f"Parsed_url: {parsed_url}")
+    logger.debug(f"dataflowid: {dataflowid}")
+    
+    if not dataflowid:
+        logger.warning("No datatypeid found in URL")
+        return {"records": []}
+    
+    return SDMX_DATA
+
+# might need to update store_data to pass metadata for labeletc.
+@app.callback(
+    Output("line", "figure"),
+    Output("bar", "figure"),
     Input("data-store", "data")
 )
-def update_graph(store_data):
+def update_graphs(store_data):
     logger.info("Dash - Updating graphs")
+    
     logger.debug(f"store_data type: {type(store_data)}")
-    logger.debug(f"store_data content: {store_data}")
-    # records = store_data.get("records", [])
+    logger.debug(f"store_data from dcc.Store: {SDMX_DATA[:5]}")
+
     df = pd.DataFrame(store_data)
-    logger.debug(f"DASHAPP - Data frame in update graph:\n{df.head()}")
+    df = store_data_preprocess(df)
+    
+    logger.debug(f"DASH - Data frame in update graph:\n{df.head()}")
 
     if df.empty:
         logger.warning("Dash - No Data in records for update graph")
         df = pd.DataFrame({"x": [], "y": []})
         
-    fig = px.line(df, x="TIME_PERIOD", y="value") #, title=f"Dataset: {store_data.get('datatype', '')}")
-    return fig
+        
+    
+    fig_line = px.line(df, y="OBS_VALUE", labels=LabelMap, title=f"")
+    fig_bar = px.bar(df, y="OBS_VALUE", labels=LabelMap, title=f"")
+    return fig_line, fig_bar
 
-@server.route("/debug/sdmx-cache", methods=["GET"])
-def debug_sdmx_cache():
-    return jsonify(SDMX_DATA)
+
+
+def store_data_preprocess(df: pd.DataFrame)-> pd.DataFrame:
+    try:
+        # Data Transformation
+        # df = dataset.data.copy()
+        df = df.drop_duplicates(subset='TIME_PERIOD')
+        df['TIME_PERIOD'] = pd.PeriodIndex(df['TIME_PERIOD'], freq='Q').to_timestamp()
+        df['OBS_VALUE'] = df['OBS_VALUE'].astype('float64').round(2)
+
+        # Reset DataFrame for Plotly
+        df = df.set_index('TIME_PERIOD')
+        df = df[['OBS_VALUE']]
+    
+        logger.debug(f"DASH - processed data frame:\n{df.head()}")
+        return df       
+    except Exception as e:
+        logger.error(f"Dash - Failed to preprocess dataframe: {e}")
+        return df
 
 
