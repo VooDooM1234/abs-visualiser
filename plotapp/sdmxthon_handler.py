@@ -4,6 +4,10 @@ import sdmxthon
 import pandas as pd
 import plotly.express as px
 
+abs_base_url = "https://data.api.abs.gov.au/rest/"
+structure_id = "CPI"
+dsd_url = f"{abs_base_url}datastructure/ABS/{structure_id}/?references=children"
+
 message_metadata = sdmxthon.read_sdmx('https://api.data.abs.gov.au/dataflow/ABS/CPI?references=all')
 print(message_metadata.payload)
 message_data = sdmxthon.read_sdmx('https://data.api.abs.gov.au/rest/data/CPI/1.10001...Q?detail=full')
